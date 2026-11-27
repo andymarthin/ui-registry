@@ -818,7 +818,7 @@ export function LogisticsWorkspace({
                 <div className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-mono text-sm font-semibold text-slate-900">
                           {selectedShipment.trackingId}
                         </span>
@@ -875,7 +875,7 @@ export function LogisticsWorkspace({
                       </div>
                     </div>
 
-                    <div className="flex flex-1 flex-col items-center px-2">
+                    <div className="flex min-w-0 flex-1 flex-col items-center px-2">
                       <div className="flex w-full items-center gap-1">
                         <span className="h-px flex-1 bg-slate-300" />
                         <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#E2E8F0] bg-[#FFFFFF] text-[#2563EB]">
@@ -883,7 +883,7 @@ export function LogisticsWorkspace({
                         </span>
                         <span className="h-px flex-1 bg-slate-300" />
                       </div>
-                      <span className="mt-1 font-mono text-[10px] text-slate-500">
+                      <span className="mt-1 max-w-full truncate font-mono text-[10px] text-slate-500">
                         {selectedShipment.vesselOrFlight}
                       </span>
                     </div>

@@ -129,7 +129,7 @@ export function GlassPortfolioLayout({
           {/* Luminous Frosted-Glass Hero Card */}
           <section
             data-inspect-label="HeroGlassCard"
-            className="relative overflow-hidden rounded-[2rem] border border-white/[0.16] bg-white/[0.05] p-6 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_28px_80px_rgba(2,6,23,0.7)] sm:p-10"
+            className="relative overflow-hidden rounded-[2rem] border border-white/[0.16] bg-white/[0.05] p-5 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_28px_80px_rgba(2,6,23,0.7)] sm:p-10"
           >
             {/* Specular inner rim accent */}
             <div
@@ -198,16 +198,16 @@ export function GlassPortfolioLayout({
                 </div>
 
                 {/* Metrics Strip */}
-                <dl className="grid grid-cols-3 gap-2.5 sm:gap-4">
+                <dl className="grid grid-cols-3 gap-2 sm:gap-4">
                   {hero.metrics.map((metric) => (
                     <div
                       key={metric.label}
-                      className="rounded-2xl border border-white/[0.1] bg-black/25 px-3 py-2.5 backdrop-blur-md sm:px-4"
+                      className="min-w-0 rounded-2xl border border-white/[0.1] bg-black/25 px-2.5 py-2 backdrop-blur-md sm:px-4 sm:py-2.5"
                     >
-                      <dt className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                      <dt className="text-[9px] font-medium uppercase leading-tight tracking-normal text-slate-400 sm:text-[10px] sm:tracking-wider">
                         {metric.label}
                       </dt>
-                      <dd className="mt-0.5 text-base font-semibold tracking-tight text-white sm:text-lg">
+                      <dd className="mt-0.5 text-sm font-semibold tracking-tight text-white sm:text-lg">
                         {metric.value}
                       </dd>
                     </div>

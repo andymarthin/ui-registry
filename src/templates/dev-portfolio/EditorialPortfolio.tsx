@@ -180,9 +180,9 @@ export function EditorialPortfolio({
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-[#D6D0C4] bg-[#EFECE3]/70 px-3.5 py-2.5">
                 <a
                   href={`mailto:${email}`}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-[#9A3412] underline decoration-[#9A3412]/40 underline-offset-4 hover:decoration-[#9A3412]"
+                  className="inline-flex min-w-0 items-center gap-2 break-all text-sm font-medium text-[#9A3412] underline decoration-[#9A3412]/40 underline-offset-4 hover:decoration-[#9A3412]"
                 >
-                  <Mail className="h-3.5 w-3.5" />
+                  <Mail className="h-3.5 w-3.5 shrink-0" />
                   <span>{email}</span>
                 </a>
                 <button
@@ -253,7 +253,7 @@ export function EditorialPortfolio({
                         aria-expanded={isExpanded}
                         className="w-full text-left py-5 px-1 sm:px-2 flex items-start justify-between gap-4 cursor-pointer"
                       >
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 flex-1 items-baseline">
+                        <div className="grid min-w-0 grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 flex-1 items-baseline">
                           <div className="sm:col-span-3 flex items-center gap-2.5 font-mono text-xs text-[#57534E]">
                             <span className="text-[#9A3412] font-semibold">
                               {indexLabel}

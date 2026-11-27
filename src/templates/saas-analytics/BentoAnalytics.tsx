@@ -258,7 +258,7 @@ export function BentoAnalytics({
           {/* 2. Tall Hero Revenue Card */}
           <section
             data-inspect-label="HeroRevenueCard"
-            className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-white/[0.08] bg-[#18181B]/70 p-5 backdrop-blur-md sm:p-6 lg:col-span-7"
+            className="relative flex min-w-0 flex-col justify-between overflow-hidden rounded-3xl border border-white/[0.08] bg-[#18181B]/70 p-5 backdrop-blur-md sm:p-6 lg:col-span-7"
           >
             <div
               aria-hidden="true"
@@ -474,7 +474,7 @@ export function BentoAnalytics({
             </div>
 
             {/* Bottom Goal Progress Strip */}
-            <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/[0.08] pt-4 text-xs">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/[0.08] pt-4 text-xs">
               <span className="text-zinc-400">{activeData.hero.goalLabel}</span>
               <div className="flex items-center gap-2.5">
                 <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/[0.08] sm:w-32">
@@ -495,7 +495,7 @@ export function BentoAnalytics({
           {/* 3. Compact Metric Pills (2x2 Bento Sub-Grid) */}
           <section
             data-inspect-label="KpiMetricGrid"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-5"
+            className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-5"
           >
             {activeData.kpis.map((kpi, idx) => {
               const style = KPI_ACCENT_STYLES[kpi.accent];

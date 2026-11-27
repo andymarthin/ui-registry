@@ -150,14 +150,14 @@ export function SwissLanding({
           className="grid grid-cols-1 lg:grid-cols-12 border-b-2 border-[#0A0A0A]"
         >
           {/* Left Hero Column */}
-          <div className="lg:col-span-7 flex flex-col justify-between border-b-2 lg:border-b-0 lg:border-r-2 border-[#0A0A0A] px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
+          <div className="min-w-0 lg:col-span-7 flex flex-col justify-between border-b-2 lg:border-b-0 lg:border-r-2 border-[#0A0A0A] px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
             <div>
               <div className="mb-6 inline-flex items-center gap-2 border-2 border-[#0A0A0A] bg-[#FAFAFA] px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] rounded-none">
                 <span className="h-2 w-2 bg-[#FF4500] rounded-none" />
                 <span>{heroKicker}</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-black uppercase leading-[0.95] tracking-[-0.04em] text-[#0A0A0A]">
+              <h1 className="text-[30px] sm:text-5xl lg:text-[56px] break-words font-black uppercase leading-[0.95] tracking-[-0.04em] text-[#0A0A0A]">
                 <span className="block">{headlineLine1}</span>
                 <span className="block">{headlineLine2}</span>
                 <span className="block text-[#FF4500]">{headlineLine3}</span>
@@ -196,7 +196,7 @@ export function SwissLanding({
               data-inspect-label="CliTerminal"
               className="mt-10 border-2 border-[#0A0A0A] bg-[#0A0A0A] text-[#FAFAFA] rounded-none"
             >
-              <div className="flex items-center justify-between border-b border-white/20 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-400">
+              <div className="flex items-center justify-between gap-2 border-b border-white/20 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-400">
                 <span className="inline-flex items-center gap-2">
                   <Terminal className="h-3.5 w-3.5 text-[#FF4500]" />
                   <span>{cliPromptLabel}</span>
@@ -205,7 +205,7 @@ export function SwissLanding({
               </div>
 
               <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-                <code className="overflow-x-auto whitespace-nowrap font-mono text-xs sm:text-sm font-semibold text-[#FAFAFA]">
+                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs sm:text-sm font-semibold text-[#FAFAFA]">
                   <span className="mr-2 select-none text-[#FF4500]">$</span>
                   {cliCommand}
                 </code>
@@ -239,7 +239,7 @@ export function SwissLanding({
           {/* Right Column: 2x2 Boxed Stats Grid */}
           <div
             data-inspect-label="StatsGrid"
-            className="lg:col-span-5 flex flex-col justify-between bg-[#FAFAFA]"
+            className="min-w-0 lg:col-span-5 flex flex-col justify-between bg-[#FAFAFA]"
           >
             <div className="flex items-center justify-between border-b-2 border-[#0A0A0A] px-4 py-3 sm:px-6">
               <span className="font-mono text-xs font-black uppercase tracking-[0.14em]">

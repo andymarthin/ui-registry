@@ -383,7 +383,7 @@ export function ProxmoxNocTerminal({
                   </span>
                 </div>
 
-                <div className="flex items-baseline justify-between gap-2 tabular-nums">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 tabular-nums">
                   <span
                     className={`text-sm font-bold tracking-tight ${SEVERITY_TEXT_CLASS[severity]}`}
                   >
@@ -405,7 +405,7 @@ export function ProxmoxNocTerminal({
         {/* 3. Proxmox LXC Container Matrix */}
         <section
           data-inspect-label="ContainerMatrix"
-          className="rounded-none border border-[#1F2937] bg-[#080A08]"
+          className="min-w-0 overflow-hidden rounded-none border border-[#1F2937] bg-[#080A08]"
         >
           {/* Filter & Search Toolbar */}
           <div className="flex flex-col gap-2.5 border-b border-[#1F2937] p-3 lg:flex-row lg:items-center lg:justify-between">
@@ -702,7 +702,7 @@ export function ProxmoxNocTerminal({
           </div>
 
           <div className="flex items-center justify-between border-t border-[#1F2937] bg-[#080A08] px-3 py-1.5 text-[11px] text-zinc-500">
-            <span>
+            <span className="min-w-0 break-all sm:break-normal">
               <span className="text-[#22C55E]">{operatorTag}</span>:~# journalctl
               -u pve-cluster -n 50 --no-pager
             </span>

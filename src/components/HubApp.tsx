@@ -1,13 +1,5 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Component,
-  useEffect,
-  useMemo,
-  useState,
-  type ErrorInfo,
-  type ReactNode,
-} from 'react';
-import {
-  AlertTriangle,
   Check,
   Code2,
   Copy,
@@ -19,7 +11,6 @@ import {
   Lock,
   Menu,
   Monitor,
-  RotateCcw,
   Scan,
   Smartphone,
   Sparkles,
@@ -27,7 +18,6 @@ import {
   Terminal,
   X,
 } from 'lucide-react';
-import { InspectProvider } from './InspectBox';
 import {
   getAllTemplates,
   type TemplateCategory,
@@ -50,69 +40,6 @@ const CATEGORIES: readonly CategoryFilter[] = [
 const ENV_BASE_URL = (import.meta.env.PUBLIC_HUB_URL ?? '')
   .trim()
   .replace(/\/+$/, '');
-
-interface PreviewErrorBoundaryProps {
-  templateName: string;
-  children: ReactNode;
-}
-
-interface PreviewErrorBoundaryState {
-  hasError: boolean;
-  errorMessage: string;
-}
-
-class PreviewErrorBoundary extends Component<
-  PreviewErrorBoundaryProps,
-  PreviewErrorBoundaryState
-> {
-  state: PreviewErrorBoundaryState = {
-    hasError: false,
-    errorMessage: '',
-  };
-
-  static getDerivedStateFromError(error: Error): PreviewErrorBoundaryState {
-    return {
-      hasError: true,
-      errorMessage: error.message || 'Unknown render error',
-    };
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('Template preview failed to render:', error, info);
-  }
-
-  private handleRetry = (): void => {
-    this.setState({ hasError: false, errorMessage: '' });
-  };
-
-  render(): ReactNode {
-    if (this.state.hasError) {
-      return (
-        <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-rose-500/25 bg-zinc-950 p-8 text-center">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400">
-            <AlertTriangle className="h-5 w-5" />
-          </div>
-          <h3 className="text-sm font-medium text-zinc-100">
-            Failed to render {this.props.templateName}
-          </h3>
-          <p className="mt-1.5 max-w-md font-mono text-xs text-zinc-400">
-            {this.state.errorMessage}
-          </p>
-          <button
-            type="button"
-            onClick={this.handleRetry}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Retry Preview
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -157,6 +84,7 @@ export default function HubApp() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('preview');
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [inspect, setInspect] = useState<boolean>(false);
+  const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [targetDir, setTargetDir] = useState<string>('');
   const [instruction, setInstruction] = useState<string>('');
@@ -220,6 +148,35 @@ export default function HubApp() {
       setBaseUrl((current) => current || window.location.origin);
     }
   }, []);
+
+  const postInspectToIframe = (nextInspect: boolean) => {
+    if (typeof window === 'undefined') return;
+    previewIframeRef.current?.contentWindow?.postMessage(
+      { type: 'ui-hub:set-inspect', inspect: nextInspect },
+      window.location.origin,
+    );
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'preview' || !activeTemplate) return;
+    postInspectToIframe(inspect);
+  }, [inspect, activeTemplate?.meta.slug, activeTab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (
+        event.data &&
+        typeof event.data === 'object' &&
+        event.data.type === 'ui-hub:preview-ready'
+      ) {
+        postInspectToIframe(inspect);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [inspect]);
 
   const cleanBaseUrl = useMemo(() => {
     const trimmed = baseUrl.trim().replace(/\/+$/, '');
@@ -678,22 +635,27 @@ export default function HubApp() {
                   {/* Preview Stage */}
                   <div className="flex-1 overflow-auto bg-[#0E0E11] p-3 sm:p-5 lg:p-6">
                     <div
-                      data-inspect-mode={inspect ? 'true' : 'false'}
                       style={{ width: viewportWidthStyle, maxWidth: '100%' }}
-                      className={`mx-auto transition-[width] duration-300 ease-out ${
+                      className={`mx-auto overflow-hidden transition-[width] duration-300 ease-out ${
                         viewport === 'desktop'
                           ? 'rounded-xl border border-zinc-800/80 shadow-xl'
-                          : 'overflow-hidden rounded-2xl border-2 border-zinc-700/80 shadow-2xl ring-1 ring-white/5'
+                          : 'rounded-2xl border-2 border-zinc-700/80 shadow-2xl ring-1 ring-white/5'
                       }`}
                     >
-                      <PreviewErrorBoundary
+                      <iframe
+                        ref={previewIframeRef}
                         key={activeTemplate.meta.slug}
-                        templateName={activeTemplate.meta.name}
-                      >
-                        <InspectProvider value={inspect}>
-                          <activeTemplate.Preview inspect={inspect} />
-                        </InspectProvider>
-                      </PreviewErrorBoundary>
+                        src={`/preview/${activeTemplate.meta.slug}?embedded=1`}
+                        title={`${activeTemplate.meta.name} live preview`}
+                        onLoad={() => postInspectToIframe(inspect)}
+                        className={`block w-full border-0 bg-[#0A0A0B] ${
+                          viewport === 'mobile'
+                            ? 'h-[780px]'
+                            : viewport === 'tablet'
+                              ? 'h-[820px]'
+                              : 'h-[calc(100vh-14.5rem)] min-h-[640px]'
+                        }`}
+                      />
                     </div>
                   </div>
                 </div>
