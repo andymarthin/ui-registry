@@ -167,7 +167,7 @@ Confirm zero TypeScript/Astro errors and then run these smoke checks:
 Copy and paste the prompt below to an AI coding agent along with a live URL, screenshots (Desktop/Tablet/Mobile), or reference HTML/CSS snippet:
 
 ```markdown
-Adopt the attached live website / UI reference into a new standalone template in `ui-registy` at `src/templates/<slug>/`.
+Adopt the attached live website / UI reference into a new standalone template in `ui-registry` at `src/templates/<slug>/`.
 
 Reference: <paste URL, screenshots for 1440px / 768px / 390px, or DOM/style notes>
 Target category: <Portfolio | Web | Analytics | Infrastructure | Logistics>

@@ -5,6 +5,10 @@ function stripTrailingSlashes(value: string | undefined): string {
   return (value ?? '').trim().replace(/\/+$/, '');
 }
 
+export function hasConfiguredHubToken(token: string | undefined): boolean {
+  return Boolean((token ?? '').trim());
+}
+
 export interface ResolveBaseUrlOptions {
   baseUrl: string;
   envBaseUrl?: string;

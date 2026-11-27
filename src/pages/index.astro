@@ -2,6 +2,14 @@
 import '../styles/global.css';
 import HeadMeta from '../components/HeadMeta.astro';
 import HubApp from '../components/HubApp';
+import { hasConfiguredHubToken } from '../templates/prompt';
+
+const processEnvToken = (
+  globalThis as { process?: { env?: Record<string, string | undefined> } }
+).process?.env?.UI_HUB_TOKEN;
+const bearerAuthAvailable = hasConfiguredHubToken(
+  import.meta.env.UI_HUB_TOKEN ?? processEnvToken,
+);
 ---
 
 <!doctype html>
@@ -15,6 +23,6 @@ import HubApp from '../components/HubApp';
     />
   </head>
   <body class="bg-[#0A0A0B] text-zinc-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">
-    <HubApp client:load />
+    <HubApp client:load bearerAuthAvailable={bearerAuthAvailable} />
   </body>
 </html>

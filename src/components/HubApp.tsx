@@ -59,7 +59,7 @@ const ENV_BASE_URL = (import.meta.env.PUBLIC_HUB_URL ?? '')
 const BASE_PATH = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
 const REPO_URL =
   (import.meta.env.PUBLIC_REPO_URL ?? '').trim() ||
-  'https://github.com/andymarthin/ui-registy';
+  'https://github.com/andymarthin/ui-registry';
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -90,7 +90,11 @@ async function copyToClipboard(text: string): Promise<boolean> {
   return ok;
 }
 
-export default function HubApp() {
+export interface HubAppProps {
+  bearerAuthAvailable?: boolean;
+}
+
+export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
   const templates = useMemo(() => getAllTemplates(), []);
 
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
@@ -326,7 +330,7 @@ export default function HubApp() {
       instruction,
       defaultInstruction: activeTemplate.meta.defaultInstruction,
       strictVerbatim,
-      bearerAuth,
+      bearerAuth: bearerAuthAvailable && bearerAuth,
       customClause,
     });
   }, [
@@ -334,6 +338,7 @@ export default function HubApp() {
     activeCustomization,
     isCustomized,
     bearerAuth,
+    bearerAuthAvailable,
     instruction,
     rawManifestUrl,
     strictVerbatim,
@@ -508,7 +513,7 @@ export default function HubApp() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="View source repository on GitHub"
-              title="andymarthin/ui-registy on GitHub"
+              title="andymarthin/ui-registry on GitHub"
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/70 md:w-auto md:px-2.5"
             >
               <svg
@@ -1103,7 +1108,11 @@ export default function HubApp() {
                           />
                         </div>
 
-                        <div className="grid gap-3 pt-1 sm:grid-cols-2">
+                        <div
+                          className={`grid gap-3 pt-1 ${
+                            bearerAuthAvailable ? 'sm:grid-cols-2' : ''
+                          }`}
+                        >
                           <button
                             type="button"
                             role="switch"
@@ -1139,41 +1148,43 @@ export default function HubApp() {
                             </span>
                           </button>
 
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={bearerAuth}
-                            onClick={() => setBearerAuth((v) => !v)}
-                            className={`flex items-center justify-between rounded-xl border p-3 text-left transition ${
-                              bearerAuth
-                                ? 'border-zinc-700 bg-zinc-900'
-                                : 'border-zinc-800/80 bg-[#0A0A0B]'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-100">
-                                <Lock className="h-3 w-3 text-zinc-400" />
-                                Bearer Auth Header
-                              </div>
-                              <div className="mt-0.5 font-mono text-[11px] text-zinc-400">
-                                Authorization: Bearer $UI_HUB_TOKEN
-                              </div>
-                            </div>
-                            <span
-                              aria-hidden="true"
-                              className={`ml-3 inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition ${
-                                bearerAuth ? 'bg-sky-500' : 'bg-zinc-700'
+                          {bearerAuthAvailable && (
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={bearerAuth}
+                              onClick={() => setBearerAuth((v) => !v)}
+                              className={`flex items-center justify-between rounded-xl border p-3 text-left transition ${
+                                bearerAuth
+                                  ? 'border-zinc-700 bg-zinc-900'
+                                  : 'border-zinc-800/80 bg-[#0A0A0B]'
                               }`}
                             >
+                              <div>
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-100">
+                                  <Lock className="h-3 w-3 text-zinc-400" />
+                                  Bearer Auth Header
+                                </div>
+                                <div className="mt-0.5 font-mono text-[11px] text-zinc-400">
+                                  Authorization: Bearer $UI_HUB_TOKEN
+                                </div>
+                              </div>
                               <span
-                                className={`h-4 w-4 rounded-full bg-white transition-transform ${
-                                  bearerAuth
-                                    ? 'translate-x-4'
-                                    : 'translate-x-0'
+                                aria-hidden="true"
+                                className={`ml-3 inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition ${
+                                  bearerAuth ? 'bg-sky-500' : 'bg-zinc-700'
                                 }`}
-                              />
-                            </span>
-                          </button>
+                              >
+                                <span
+                                  className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                                    bearerAuth
+                                      ? 'translate-x-4'
+                                      : 'translate-x-0'
+                                  }`}
+                                />
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

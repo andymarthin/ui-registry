@@ -24,6 +24,7 @@ cp .env.example .env
 ```
 
 - `PUBLIC_HUB_URL`: Public origin for your hosted hub (for example, `https://ui.example.com`). When unset or empty, the app falls back to `window.location.origin` in the browser.
+- `UI_HUB_TOKEN`: Optional build-time variable. When set, the Agent Prompt Builder shows the **Bearer Auth Header** toggle for private proxies. Only a boolean presence check runs at build time; the token value is never bundled into `dist/`.
 
 ## Deployment
 

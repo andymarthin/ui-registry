@@ -1,6 +1,6 @@
 # Deploying UI Template Hub
 
-This guide covers building, configuring, and deploying **UI Template Hub** (`ui-registy`) to any static host, web server, or container platform.
+This guide covers building, configuring, and deploying **UI Template Hub** (`ui-registry`) to any static host, web server, or container platform.
 
 ---
 
@@ -257,6 +257,8 @@ The Hub's **1-Line Prompt** panel includes a **Bearer Auth Header** toggle that 
 ```
 
 into the generated `curl` command so coding agents authenticate without embedding raw secrets in prompts.
+
+> The toggle is only displayed when `UI_HUB_TOKEN` is configured in the build environment. It is evaluated as a boolean presence check at build time; the token value is never bundled into `dist/`.
 
 ### Protecting `/r/*.md` at the Reverse Proxy
 

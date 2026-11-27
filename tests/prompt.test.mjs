@@ -4,6 +4,7 @@ import {
   buildOneLinePrompt,
   buildPreviewHref,
   buildRawManifestUrl,
+  hasConfiguredHubToken,
   resolveBaseUrl,
 } from '../src/templates/prompt.ts';
 
@@ -35,6 +36,32 @@ const SAMPLE_META = {
   ],
 };
 
+describe('hasConfiguredHubToken', () => {
+  it('returns false for undefined, empty, and whitespace-only tokens', () => {
+    assert.equal(hasConfiguredHubToken(undefined), false);
+    assert.equal(hasConfiguredHubToken(''), false);
+    assert.equal(hasConfiguredHubToken('   \n\t  '), false);
+  });
+
+  it('returns true for non-empty tokens, with or without surrounding whitespace', () => {
+    assert.equal(hasConfiguredHubToken('secret-token'), true);
+    assert.equal(hasConfiguredHubToken('  secret-token  '), true);
+  });
+});
+
+describe('hasConfiguredHubToken', () => {
+  it('returns false for undefined, empty, and whitespace-only tokens', () => {
+    assert.equal(hasConfiguredHubToken(undefined), false);
+    assert.equal(hasConfiguredHubToken(''), false);
+    assert.equal(hasConfiguredHubToken('   \n\t  '), false);
+  });
+
+  it('returns true for non-empty tokens, with or without surrounding whitespace', () => {
+    assert.equal(hasConfiguredHubToken('secret-token'), true);
+    assert.equal(hasConfiguredHubToken('  secret-token  '), true);
+  });
+});
+
 describe('resolveBaseUrl', () => {
   it('trims whitespace and strips trailing slashes', () => {
     assert.equal(
@@ -42,8 +69,8 @@ describe('resolveBaseUrl', () => {
       'https://example.com',
     );
     assert.equal(
-      resolveBaseUrl({ baseUrl: 'https://andymarthin.github.io/ui-registy/' }),
-      'https://andymarthin.github.io/ui-registy',
+      resolveBaseUrl({ baseUrl: 'https://andymarthin.github.io/ui-registry/' }),
+      'https://andymarthin.github.io/ui-registry',
     );
   });
 
@@ -115,17 +142,17 @@ describe('buildRawManifestUrl', () => {
     );
     assert.equal(
       buildRawManifestUrl(
-        'https://andymarthin.github.io/ui-registy',
+        'https://andymarthin.github.io/ui-registry',
         'logistics-hub',
       ),
-      'https://andymarthin.github.io/ui-registy/r/logistics-hub.md',
+      'https://andymarthin.github.io/ui-registry/r/logistics-hub.md',
     );
     assert.equal(
       buildRawManifestUrl(
-        'https://andymarthin.github.io/ui-registy///',
+        'https://andymarthin.github.io/ui-registry///',
         'logistics-hub',
       ),
-      'https://andymarthin.github.io/ui-registy/r/logistics-hub.md',
+      'https://andymarthin.github.io/ui-registry/r/logistics-hub.md',
     );
   });
 });
@@ -134,10 +161,10 @@ describe('buildPreviewHref', () => {
   it('handles root and subpath base paths without a slug', () => {
     assert.equal(buildPreviewHref({ basePath: '' }), '/');
     assert.equal(buildPreviewHref({ basePath: '/' }), '/');
-    assert.equal(buildPreviewHref({ basePath: '/ui-registy' }), '/ui-registy/');
+    assert.equal(buildPreviewHref({ basePath: '/ui-registry' }), '/ui-registry/');
     assert.equal(
-      buildPreviewHref({ basePath: '/ui-registy/' }),
-      '/ui-registy/',
+      buildPreviewHref({ basePath: '/ui-registry/' }),
+      '/ui-registry/',
     );
   });
 
@@ -147,8 +174,8 @@ describe('buildPreviewHref', () => {
       '/preview/glass-portfolio/',
     );
     assert.equal(
-      buildPreviewHref({ basePath: '/ui-registy', slug: 'glass-portfolio' }),
-      '/ui-registy/preview/glass-portfolio/',
+      buildPreviewHref({ basePath: '/ui-registry', slug: 'glass-portfolio' }),
+      '/ui-registry/preview/glass-portfolio/',
     );
 
     const defaultCustomization = {
@@ -163,12 +190,12 @@ describe('buildPreviewHref', () => {
       },
     };
     const href = buildPreviewHref({
-      basePath: '/ui-registy/',
+      basePath: '/ui-registry/',
       slug: 'glass-portfolio',
       customization: defaultCustomization,
       meta: SAMPLE_META,
     });
-    assert.equal(href, '/ui-registy/preview/glass-portfolio/');
+    assert.equal(href, '/ui-registry/preview/glass-portfolio/');
     assert.ok(!href.includes('?'));
   });
 
@@ -198,14 +225,14 @@ describe('buildPreviewHref', () => {
     );
 
     const subpathHref = buildPreviewHref({
-      basePath: '/ui-registy',
+      basePath: '/ui-registry',
       slug: 'glass-portfolio',
       customization,
       meta: SAMPLE_META,
     });
     assert.equal(
       subpathHref,
-      '/ui-registy/preview/glass-portfolio/?accent=%2338BDF8&radius=pill&font=mono&density=compact&copy.brandName=Nova+Lab',
+      '/ui-registry/preview/glass-portfolio/?accent=%2338BDF8&radius=pill&font=mono&density=compact&copy.brandName=Nova+Lab',
     );
   });
 });

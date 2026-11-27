@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for coding agents working in `ui-registy`.
+Instructions for coding agents working in `ui-registry`.
 
 ## Stack & Verification Commands
 
