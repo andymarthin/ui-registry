@@ -40,13 +40,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck and build static site
+      - name: Typecheck, test, and build static site
         env:
           ASTRO_TELEMETRY_DISABLED: '1'
           ASTRO_SITE: ${{ steps.pages.outputs.origin }}
           ASTRO_BASE: ${{ steps.pages.outputs.base_path }}
         run: |
           pnpm check
+          pnpm test
           pnpm build
 
       - name: Upload Pages artifact

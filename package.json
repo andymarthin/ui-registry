@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check && tsc --noEmit"
+    "check": "astro check && tsc --noEmit",
+    "test": "node --import ./tests/ts-loader.mjs --test tests/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.9",
