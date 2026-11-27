@@ -35,7 +35,7 @@ curl -s https://<your-hub-domain>/r/glass-portfolio.md
 
 ## Adding a New Template
 
-`src/templates/registry.ts` uses Vite's `import.meta.glob` to auto-discover every template folder under `src/templates/<slug>/`—no manual registration list is required. See [`docs/creating-templates.md`](docs/creating-templates.md) for the full schema, examples, and verification checklist.
+`src/templates/registry.ts` uses Vite's `import.meta.glob` to auto-discover every template folder under `src/templates/<slug>/`—no manual registration list is required. See [`docs/creating-templates.md`](docs/creating-templates.md) for the full schema, examples, and verification checklist, or [`docs/adopting-from-live.md`](docs/adopting-from-live.md) for a step-by-step guide to adopting a template from a live website or app.
 
 Create `src/templates/<slug>/` with:
 

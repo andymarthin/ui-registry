@@ -2,6 +2,8 @@
 
 This guide explains how to add a new UI template to **UI Template Hub** so it appears automatically in the browser preview shell and is published as a raw Markdown manifest at `/r/<slug>.md`.
 
+> **Adopting from an existing site or app?** See [`docs/adopting-from-live.md`](./adopting-from-live.md) for an end-to-end guide on auditing a live reference, replacing brand/IP assets, decoupling framework styles into standalone Tailwind v4 components, and hardening mobile layouts.
+
 ## 1. Folder Structure
 
 Create a new directory under `src/templates/<slug>/` using a lowercase kebab-case slug:

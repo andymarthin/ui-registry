@@ -22,7 +22,7 @@ Instructions for coding agents working in `ui-registy`.
 
 ## Strict Standalone Rules for Template Authors
 
-Deliverable `.tsx` files inside `src/templates/<slug>/` are emitted verbatim to `/r/<slug>.md` for external projects (see [`docs/creating-templates.md`](docs/creating-templates.md) for the complete authoring guide):
+Deliverable `.tsx` files inside `src/templates/<slug>/` are emitted verbatim to `/r/<slug>.md` for external projects (see [`docs/creating-templates.md`](docs/creating-templates.md) for the complete authoring guide and [`docs/adopting-from-live.md`](docs/adopting-from-live.md) when adopting a UI from a live website or app):
 
 1. **Allowed imports only:** Deliverable `.tsx` files MUST ONLY import `react`, `lucide-react`, or sibling `.tsx` files inside their own `src/templates/<slug>/` folder. NEVER import `../../components/InspectBox`, `../types`, or any hub-internal module.
 2. **`Preview.tsx` exclusion:** `Preview.tsx` is for the Hub preview stage only and is automatically excluded from `/r/<slug>.md`. `Preview.tsx` may import `../../components/InspectBox` and `../types`.
