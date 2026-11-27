@@ -14,12 +14,18 @@ src/templates/
     ├── meta.ts                 # Required: TemplateMeta metadata
     ├── Preview.tsx             # Required: Hub preview wrapper (excluded from /r/<slug>.md)
     ├── MyTemplateShell.tsx     # Deliverable standalone component(s)
-    └── MetricCard.tsx          # Optional additional standalone components
+    ├── MetricCard.tsx          # Optional additional standalone components
+    ├── types.ts                # Optional helper/type modules (.ts)
+    ├── layout/                 # Optional subfolders (layout/, widgets/, tables/, ...)
+    │   └── Sidebar.tsx
+    └── widgets/
+        ├── index.ts
+        └── KpiCard.tsx
 ```
 
-- Only direct child `.tsx` files inside `src/templates/<slug>/` are collected as deliverable files.
-- `Preview.tsx` is explicitly excluded from the generated `/r/<slug>.md` output.
-- Deliverable `.tsx` files are sorted alphabetically by filename in the generated manifest.
+- Every `.ts` and `.tsx` file under `src/templates/<slug>/` is collected recursively (`./*/**/*.ts` and `./*/**/*.tsx`) as a deliverable file, including files in subfolders such as `layout/`, `widgets/`, and `tables/` and helper/type `.ts` files.
+- The top-level `meta.ts` and `Preview.tsx` are explicitly excluded from the generated `/r/<slug>.md` output.
+- Deliverable files are sorted alphabetically by their relative path (for example `layout/Sidebar.tsx`) in the generated manifest, and each is written to `<targetDir>/<relative path>` with subfolders preserved. `.ts` files render in ```` ```ts ```` fences and `.tsx` files in ```` ```tsx ```` fences.
 - `PREFERRED_ORDER` in `src/templates/registry.ts` places the core 6 templates first; any additional templates are sorted alphabetically by `slug` after them.
 
 ---
@@ -49,7 +55,7 @@ Every template folder must export `meta: TemplateMeta` (defined in `src/template
 | `swatchAccent` | `string` | Accent hex color for the sidebar swatch dot (e.g. `'#38BDF8'`) |
 | `swatchBorder` | `string` | Border hex color for the sidebar swatch dot (e.g. `'#27272A'`) |
 | `description` | `string` | Concise summary of layout, visual style, and interactive features |
-| `dependencies` | `string[]` | External npm packages required by the deliverable components (e.g. `['lucide-react']`) |
+| `dependencies` | `string[]` | External npm packages required by the deliverable components (e.g. `['tailwindcss', 'lucide-react']`) |
 | `targetDir` | `string` | Default destination directory in consumer repos (e.g. `'src/components/my-template'`) |
 | `defaultInstruction` | `string` | Default data/copy wiring prompt pre-filled in the **1-Line Prompt** tab |
 
@@ -69,7 +75,7 @@ export const meta: TemplateMeta = {
   swatchBorder: '#1F2937',
   description:
     'High-contrast uptime and incident status board with service health rows and historical latency bars.',
-  dependencies: ['lucide-react'],
+  dependencies: ['tailwindcss', 'lucide-react'],
   targetDir: 'src/components/my-template',
   defaultInstruction:
     'Wire the services array and incident log props to our /api/status endpoint without changing layout or styling.',
@@ -80,12 +86,12 @@ export const meta: TemplateMeta = {
 
 ## 3. Standalone Component Rules
 
-Deliverable `.tsx` files are emitted **verbatim** inside `/r/<slug>.md` so coding agents can copy them directly into external React + Tailwind projects. Because of this:
+Deliverable `.ts` / `.tsx` files are emitted **verbatim** inside `/r/<slug>.md` so coding agents can copy them directly into external React + Tailwind projects. Because of this:
 
-1. **Allowed imports only:** Deliverable `.tsx` files may ONLY import:
+1. **Allowed imports only:** Deliverable files may ONLY import:
    - `react`
    - `lucide-react` (or packages explicitly listed in `meta.dependencies`)
-   - Sibling `.tsx` files inside the same `src/templates/<slug>/` folder (for example `./MetricCard`)
+   - Relative imports (`./` or `../`) that resolve to another deliverable `.ts` / `.tsx` file strictly inside the same `src/templates/<slug>/` folder, including subfolders (for example `./MetricCard`, `./layout/Sidebar`, `../types`, or `./widgets` resolving to `widgets/index.ts`). Relative imports must never resolve to the top-level `Preview.tsx` or `meta.ts`, nor escape the template folder.
 2. **Never import hub internals:** NEVER import `../../components/InspectBox`, `../types`, `../registry`, or any file outside `src/templates/<slug>/` inside a deliverable component.
 3. **Typed props for all copy and data:** Export clean TypeScript interfaces and accept data/copy via props with sensible defaults where appropriate, so consumer apps can wire real data without editing layout or styling.
 4. **Inspect Templates support:** Add `data-inspect-label="<ComponentOrSectionName>"` on major structural sections/cards. When Inspect Mode is active in the hub, `src/styles/global.css` automatically draws dashed `#38bdf8` outlines and floating top-left labels on `[data-inspect-mode="true"] [data-inspect-label]` without affecting layout geometry.
@@ -230,12 +236,12 @@ No manual registration is required. `src/templates/registry.ts` uses Vite `impor
 
 - `./*/meta.ts` (eager) loads `meta`
 - `./*/Preview.tsx` (eager) loads the default React component
-- `./*/*.tsx` (eager with `query: '?raw', import: 'default'`) loads the raw source text of every `.tsx` file except `Preview.tsx`
+- `./*/**/*.ts` and `./*/**/*.tsx` (eager with `query: '?raw', import: 'default'`) load the raw source text of every `.ts` / `.tsx` file recursively, except the top-level `Preview.tsx` and `meta.ts`
 
 For each matched `<slug>` that has both `meta.ts` and `Preview.tsx`:
 
-1. Each deliverable file's `targetPath` is computed as `${meta.targetDir.replace(/\/+$/, '')}/${filename}`.
-2. `generateTemplateMarkdown(meta, files)` in `src/templates/markdown.ts` builds the Markdown manifest containing metadata, the 3 verbatim agent rules, and each file's `## File: \`<targetPath>\`` fenced `tsx` block.
+1. Each deliverable file's `targetPath` is computed as `${meta.targetDir.replace(/\/+$/, '')}/${filename}`, where `filename` is the path relative to the template folder (e.g. `layout/Sidebar.tsx`).
+2. `generateTemplateMarkdown(meta, files)` in `src/templates/markdown.ts` builds the Markdown manifest containing metadata, the 3 verbatim agent rules, and each file's `## File: \`<targetPath>\`` fenced `ts` (for `.ts`) or `tsx` (for `.tsx`) block.
 3. `src/pages/r/[slug].md.ts` prerenders one static route per template (`export const prerender = true`) serving `template.markdown` with `Content-Type: text/markdown; charset=utf-8`.
 
 ---
@@ -255,9 +261,9 @@ After adding or updating a template, verify everything builds and serves cleanly
    pnpm build
    ```
 
-3. **Confirm the generated Markdown manifest exists and excludes `Preview.tsx`:**
+3. **Confirm the generated Markdown manifest exists and excludes `Preview.tsx` and `meta.ts`:**
    - Check that `dist/r/<slug>.md` was generated.
-   - Inspect `dist/r/<slug>.md` to verify it contains all intended deliverable `.tsx` files under `## File: \`<targetDir>/<File>.tsx\`` and does **not** include `Preview.tsx` or any hub-internal imports (`InspectBox`, `../types`).
+   - Inspect `dist/r/<slug>.md` to verify it contains all intended deliverable `.ts` / `.tsx` files (including nested paths) under `## File: \`<targetDir>/<relative/path>.tsx\`` and does **not** include `Preview.tsx`, `meta.ts`, or any hub-internal imports (`InspectBox`, `../types`).
 
 4. **Preview and curl locally:**
    ```bash

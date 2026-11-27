@@ -15,6 +15,7 @@ const PREFERRED_ORDER = [
   'dev-portfolio',
   'homelab-ops',
   'saas-analytics',
+  'admin-dashboard',
   'logistics-hub',
 ];
 
@@ -26,16 +27,19 @@ const previewModules = import.meta.glob<{
   default: ComponentType<TemplatePreviewProps>;
 }>('./*/Preview.tsx', { eager: true });
 
-const rawFileModules = import.meta.glob<string>('./*/*.tsx', {
-  eager: true,
-  query: '?raw',
-  import: 'default',
-});
+const rawFileModules = import.meta.glob<string>(
+  ['./*/**/*.ts', './*/**/*.tsx'],
+  {
+    eager: true,
+    query: '?raw',
+    import: 'default',
+  },
+);
 
 function extractSlugAndFilename(
   modulePath: string,
 ): { slug: string; filename: string } | null {
-  const match = /^\.\/([^/]+)\/([^/]+)$/.exec(modulePath);
+  const match = /^\.\/([^/]+)\/(.+)$/.exec(modulePath);
   if (!match) return null;
   return { slug: match[1], filename: match[2] };
 }
@@ -67,7 +71,9 @@ function buildRegistry(): TemplateEntry[] {
   for (const [path, content] of Object.entries(rawFileModules)) {
     const parsed = extractSlugAndFilename(path);
     if (!parsed) continue;
-    if (parsed.filename === 'Preview.tsx') continue;
+    if (parsed.filename === 'Preview.tsx' || parsed.filename === 'meta.ts') {
+      continue;
+    }
     const list = rawFilesBySlug.get(parsed.slug) ?? [];
     list.push({ filename: parsed.filename, content });
     rawFilesBySlug.set(parsed.slug, list);

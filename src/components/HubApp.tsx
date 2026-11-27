@@ -24,9 +24,14 @@ import {
   buildCustomizationPromptClause,
   countActiveCustomizations,
   createDefaultCustomization,
-  serializeCustomizationParams,
 } from '../templates/customize';
 import { generateTemplateMarkdown } from '../templates/markdown';
+import {
+  buildOneLinePrompt,
+  buildPreviewHref,
+  buildRawManifestUrl,
+  resolveBaseUrl,
+} from '../templates/prompt';
 import {
   getAllTemplates,
   type TemplateCategory,
@@ -52,6 +57,9 @@ const ENV_BASE_URL = (import.meta.env.PUBLIC_HUB_URL ?? '')
   .trim()
   .replace(/\/+$/, '');
 const BASE_PATH = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+const REPO_URL =
+  (import.meta.env.PUBLIC_REPO_URL ?? '').trim() ||
+  'https://github.com/andymarthin/ui-registy';
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -103,7 +111,11 @@ export default function HubApp() {
   const [customizeOpen, setCustomizeOpen] = useState<boolean>(false);
   const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  const [targetDir, setTargetDir] = useState<string>('');
+  const [targetDir, setTargetDir] = useState<string>(() => {
+    const preferred =
+      templates.find((t) => t.meta.slug === 'glass-portfolio') ?? templates[0];
+    return preferred?.meta.targetDir ?? '';
+  });
   const [instruction, setInstruction] = useState<string>('');
   const [strictVerbatim, setStrictVerbatim] = useState<boolean>(true);
   const [bearerAuth, setBearerAuth] = useState<boolean>(false);
@@ -147,7 +159,9 @@ export default function HubApp() {
 
   useEffect(() => {
     if (!activeTemplate) return;
-    setTargetDir(activeTemplate.meta.targetDir);
+    setTargetDir((current) =>
+      current.trim() === '' ? '' : activeTemplate.meta.targetDir,
+    );
     setInstruction(activeTemplate.meta.defaultInstruction);
   }, [activeTemplate?.meta.slug]);
 
@@ -259,30 +273,34 @@ export default function HubApp() {
     return () => window.removeEventListener('message', handleMessage);
   }, [inspect, activeCustomization]);
 
-  const cleanBaseUrl = useMemo(() => {
-    const trimmed = baseUrl.trim().replace(/\/+$/, '');
-    return (
-      trimmed ||
-      ENV_BASE_URL ||
-      detectedOrigin ||
-      (typeof window !== 'undefined'
-        ? `${window.location.origin}${BASE_PATH}`
-        : '')
-    );
-  }, [baseUrl, detectedOrigin]);
+  const cleanBaseUrl = useMemo(
+    () =>
+      resolveBaseUrl({
+        baseUrl,
+        envBaseUrl: ENV_BASE_URL,
+        detectedOrigin,
+        fallbackOrigin:
+          typeof window !== 'undefined'
+            ? `${window.location.origin}${BASE_PATH}`
+            : '',
+      }),
+    [baseUrl, detectedOrigin],
+  );
 
   const rawManifestUrl = activeTemplate
-    ? `${cleanBaseUrl}/r/${activeTemplate.meta.slug}.md`
+    ? buildRawManifestUrl(cleanBaseUrl, activeTemplate.meta.slug)
     : '';
 
-  const fullPageHref = useMemo(() => {
-    if (!activeTemplate) return BASE_PATH ? `${BASE_PATH}/` : '/';
-    const params = serializeCustomizationParams(
-      activeCustomization,
-      activeTemplate.meta,
-    ).toString();
-    return `${BASE_PATH}/preview/${activeTemplate.meta.slug}/${params ? `?${params}` : ''}`;
-  }, [activeTemplate, activeCustomization]);
+  const fullPageHref = useMemo(
+    () =>
+      buildPreviewHref({
+        basePath: BASE_PATH,
+        slug: activeTemplate?.meta.slug,
+        customization: activeCustomization,
+        meta: activeTemplate?.meta,
+      }),
+    [activeTemplate, activeCustomization],
+  );
 
   const displayMarkdown = useMemo(() => {
     if (!activeTemplate) return '';
@@ -297,29 +315,20 @@ export default function HubApp() {
 
   const oneLinePrompt = useMemo(() => {
     if (!activeTemplate) return '';
-    const authFlag = bearerAuth
-      ? ' -H "Authorization: Bearer $UI_HUB_TOKEN"'
-      : '';
-    const curlCmd = `curl -s${authFlag} ${rawManifestUrl}`;
-    const cleanDir =
-      targetDir.replace(/\s+/g, ' ').trim() || activeTemplate.meta.targetDir;
-    const cleanInstruction =
-      instruction.replace(/\s+/g, ' ').trim() ||
-      activeTemplate.meta.defaultInstruction;
     const customClause = isCustomized
       ? buildCustomizationPromptClause(activeCustomization, activeTemplate.meta)
       : '';
 
-    if (strictVerbatim) {
-      if (customClause) {
-        return `Run \`${curlCmd}\`, write every file verbatim to \`${cleanDir}\` preserving layout geometry while applying these customizations: ${customClause}, and wire data only via component props: ${cleanInstruction}`;
-      }
-      return `Run \`${curlCmd}\`, write every file verbatim to \`${cleanDir}\` without altering colors, typography, border radius, or layout geometry, and wire data only via component props: ${cleanInstruction}`;
-    }
-    if (customClause) {
-      return `Run \`${curlCmd}\` to inspect the template manifest, write the components into \`${cleanDir}\` adapting styling as needed while applying these customizations: ${customClause}, and wire data via component props: ${cleanInstruction}`;
-    }
-    return `Run \`${curlCmd}\` to inspect the template manifest, write the components into \`${cleanDir}\` adapting styling as needed, and wire data via component props: ${cleanInstruction}`;
+    return buildOneLinePrompt({
+      rawManifestUrl,
+      targetDir,
+      defaultTargetDir: activeTemplate.meta.targetDir,
+      instruction,
+      defaultInstruction: activeTemplate.meta.defaultInstruction,
+      strictVerbatim,
+      bearerAuth,
+      customClause,
+    });
   }, [
     activeTemplate,
     activeCustomization,
@@ -468,7 +477,7 @@ export default function HubApp() {
             </div>
           </div>
 
-          {/* Base URL input */}
+          {/* Base URL input & repo link */}
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <label
               htmlFor="hub-base-url"
@@ -488,8 +497,31 @@ export default function HubApp() {
                 'Auto-detected from current host'
               }
               spellCheck={false}
-              className="h-8 w-full min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none sm:w-64"
+              className="h-8 min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none sm:w-64 sm:flex-initial"
             />
+            <span
+              aria-hidden="true"
+              className="hidden h-4 w-px bg-zinc-800 sm:inline-block"
+            />
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View source repository on GitHub"
+              title="andymarthin/ui-registy on GitHub"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/70 md:w-auto md:px-2.5"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              >
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+              </svg>
+              <span className="hidden md:inline">GitHub</span>
+              <ExternalLink className="hidden h-3 w-3 text-zinc-500 md:inline" />
+            </a>
           </div>
         </div>
 
@@ -1016,20 +1048,43 @@ export default function HubApp() {
 
                       <div className="space-y-4">
                         <div>
-                          <label
-                            htmlFor="prompt-target-dir"
-                            className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-zinc-300"
-                          >
-                            <Folder className="h-3.5 w-3.5 text-zinc-500" />
-                            Target Directory
-                          </label>
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <label
+                              htmlFor="prompt-target-dir"
+                              className="flex items-center gap-1.5 text-xs font-medium text-zinc-300"
+                            >
+                              <Folder className="h-3.5 w-3.5 text-zinc-500" />
+                              Target Directory
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTargetDir(
+                                  targetDir.trim() === ''
+                                    ? activeTemplate.meta.targetDir
+                                    : '',
+                                )
+                              }
+                              className="rounded-md border border-zinc-800 bg-[#0A0A0B] px-2 py-0.5 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100"
+                            >
+                              {targetDir.trim() === ''
+                                ? 'Use default'
+                                : 'Auto-detect'}
+                            </button>
+                          </div>
                           <input
                             id="prompt-target-dir"
                             type="text"
                             value={targetDir}
                             onChange={(e) => setTargetDir(e.target.value)}
+                            placeholder={`Auto-detect project structure (default: ${activeTemplate.meta.targetDir})`}
                             className="w-full rounded-lg border border-zinc-800 bg-[#0A0A0B] px-3 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none"
                           />
+                          <p className="mt-1.5 text-[11px] text-zinc-500">
+                            {targetDir.trim() === ''
+                              ? "Auto-detect active — the agent will place files using your repository's existing folder structure."
+                              : 'Edit to match your project structure, or click Auto-detect to let the agent choose.'}
+                          </p>
                         </div>
 
                         <div>

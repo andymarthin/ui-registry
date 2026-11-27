@@ -55,7 +55,7 @@ export function generateTemplateMarkdown(
     '',
     '## Rules for Agent',
     '',
-    '1. Write every file below VERBATIM to its exact path.',
+    '1. Write every file below verbatim into the requested target directory (or the default Target Directory above if none is specified), keeping relative paths and filenames intact.',
     rule2,
     '3. Only wire real data or copy via component props.',
   ];
@@ -122,14 +122,17 @@ export function generateTemplateMarkdown(
     }
   }
 
-  const fileSections = files.flatMap((file) => [
-    '',
-    `## File: \`${file.targetPath}\``,
-    '',
-    '```tsx',
-    file.content.trimEnd(),
-    '```',
-  ]);
+  const fileSections = files.flatMap((file) => {
+    const fenceLang = file.filename.endsWith('.ts') ? 'ts' : 'tsx';
+    return [
+      '',
+      `## File: \`${file.targetPath}\``,
+      '',
+      `\`\`\`${fenceLang}`,
+      file.content.trimEnd(),
+      '```',
+    ];
+  });
 
   return [...headerLines, ...customizationLines, ...fileSections, ''].join('\n');
 }

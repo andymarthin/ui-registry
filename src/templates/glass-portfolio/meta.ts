@@ -12,7 +12,7 @@ export const meta: TemplateMeta = {
   accentFamily: 'sky',
   description:
     'A cosmic midnight personal portfolio featuring an animated HTML5 refractive glass spheres canvas, sticky frosted-glass pill navigation with an expandable drawer, multi-slide interactive project gallery cards, and a two-column work history & education timeline.',
-  dependencies: ['lucide-react'],
+  dependencies: ['tailwindcss', 'lucide-react'],
   targetDir: 'src/components/glass-portfolio',
   defaultInstruction:
     'Wire your personal bio, metrics, multi-slide project showcases, work history, education, and social links into GlassPortfolioLayout via props without altering the refractive glass surfaces or cosmic midnight palette.',

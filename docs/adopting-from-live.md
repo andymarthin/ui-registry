@@ -104,11 +104,11 @@ Fill every field of `TemplateMeta` accurately so both Hub users and downstream c
 - [ ] `styleTag` & `styleFull`: Concise sidebar badge (e.g., `'Editorial Dark'`) and full aesthetic summary shown in the Hub header and `/r/<slug>.md` manifest.
 - [ ] `swatchBg`, `swatchAccent`, `swatchBorder`: Exact hex colors extracted from the reference (`swatchBg` also sets the page background color on `/preview/<slug>`).
 - [ ] `description`: 1–2 sentences describing the adopted layout structure, visual aesthetic, and interactive features.
-- [ ] `dependencies`: Exact npm packages imported by deliverable `.tsx` files (typically `['lucide-react']`).
+- [ ] `dependencies`: Exact npm packages required by deliverable `.tsx` files (typically `['tailwindcss', 'lucide-react']`).
 - [ ] `targetDir`: Default destination directory in consumer repos (e.g., `'src/components/<slug>'`), which sets every `## File: \`<targetDir>/<File>.tsx\`` header in `/r/<slug>.md`.
 - [ ] `defaultInstruction`: Specific wiring instruction pre-filled in the **1-Line Prompt** tab telling downstream agents which props to connect to real APIs/copy while keeping colors, typography, radii, and layout geometry intact.
 
-> **Design-preservation rules:** `src/templates/markdown.ts` automatically includes the `## Rules for Agent` section in every `/r/<slug>.md` manifest (write every file verbatim to its exact path, do not alter colors/typography/border radius/layout geometry, and wire real data or copy via props only).
+> **Design-preservation rules:** `src/templates/markdown.ts` automatically includes the `## Rules for Agent` section in every `/r/<slug>.md` manifest (write every file verbatim into the target directory, do not alter colors/typography/border radius/layout geometry, and wire real data or copy via props only).
 
 ### `Preview.tsx` checklist
 
