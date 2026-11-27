@@ -2,7 +2,7 @@
 
 Self-hosted static UI Template Hub built with **Astro**, **React**, and **Tailwind CSS v4**. It serves two audiences from a single source of truth:
 
-1. **Interactive Browser Hub (`/`)**: Filter templates by category, switch between **Desktop**, **Tablet (`768px`)**, and **Mobile (`390px`)** viewports, toggle **Inspect Templates** boundaries, view raw manifests, and generate 1-line coding-agent prompts.
+1. **Interactive Browser Hub (`/`) & Full-Page Previews (`/preview/<slug>`)**: Filter templates by category, switch between **Desktop**, **Tablet (`768px`)**, and **Mobile (`390px`)** viewports, toggle **Inspect Templates** boundaries, open standalone full-page previews at `/preview/<slug>`, view raw manifests, and generate 1-line coding-agent prompts.
 2. **Raw Agent Manifests (`/r/<slug>.md`)**: Prerendered static Markdown files containing exact target paths, verbatim component source code, dependencies, and strict copy/wiring rules for coding agents.
 
 ## Commands

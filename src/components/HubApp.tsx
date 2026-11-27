@@ -11,6 +11,7 @@ import {
   Check,
   Code2,
   Copy,
+  ExternalLink,
   Eye,
   Folder,
   Globe,
@@ -632,33 +633,46 @@ export default function HubApp() {
                       </span>
                     </div>
 
-                    {/* Inspect Templates Toggle */}
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={inspect}
-                      onClick={() => setInspect((prev) => !prev)}
-                      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        inspect
-                          ? 'border-sky-500/50 bg-sky-950/50 text-sky-300'
-                          : 'border-zinc-800 bg-zinc-900/70 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100'
-                      }`}
-                    >
-                      <Scan className="h-3.5 w-3.5" />
-                      <span>Inspect Templates</span>
-                      <span
-                        aria-hidden="true"
-                        className={`ml-0.5 inline-flex h-4 w-7 items-center rounded-full p-0.5 transition ${
-                          inspect ? 'bg-sky-500' : 'bg-zinc-700'
+                    {/* Right Toolbar Actions */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a
+                        href={`/preview/${activeTemplate.meta.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>Open Full Page</span>
+                      </a>
+
+                      {/* Inspect Templates Toggle */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={inspect}
+                        onClick={() => setInspect((prev) => !prev)}
+                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          inspect
+                            ? 'border-sky-500/50 bg-sky-950/50 text-sky-300'
+                            : 'border-zinc-800 bg-zinc-900/70 text-zinc-300 hover:border-zinc-700 hover:text-zinc-100'
                         }`}
                       >
+                        <Scan className="h-3.5 w-3.5" />
+                        <span>Inspect Templates</span>
                         <span
-                          className={`h-3 w-3 rounded-full bg-white transition-transform ${
-                            inspect ? 'translate-x-3' : 'translate-x-0'
+                          aria-hidden="true"
+                          className={`ml-0.5 inline-flex h-4 w-7 items-center rounded-full p-0.5 transition ${
+                            inspect ? 'bg-sky-500' : 'bg-zinc-700'
                           }`}
-                        />
-                      </span>
-                    </button>
+                        >
+                          <span
+                            className={`h-3 w-3 rounded-full bg-white transition-transform ${
+                              inspect ? 'translate-x-3' : 'translate-x-0'
+                            }`}
+                          />
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Preview Stage */}
