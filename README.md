@@ -25,6 +25,10 @@ cp .env.example .env
 
 - `PUBLIC_HUB_URL`: Public origin for your hosted hub (for example, `https://ui.example.com`). When unset or empty, the app falls back to `window.location.origin` in the browser.
 
+## Deployment
+
+`pnpm build` outputs a fully static site to `dist/` with no runtime server or database required. See [`docs/deploying.md`](docs/deploying.md) for deployment guides covering managed static hosts, Nginx/Caddy self-hosting, universal Docker containers, optional Bearer auth, and post-deploy smoke tests.
+
 ## Fetching a Template Manifest
 
 Coding agents or terminal workflows can pull any template manifest directly:
