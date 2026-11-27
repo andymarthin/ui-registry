@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Inspect Templates mode */
+:where([data-inspect-mode="true"] [data-inspect-label]) {
+  position: relative;
+}
+
+[data-inspect-mode="true"] [data-inspect-label] {
+  outline: 1.5px dashed rgba(56, 189, 248, 0.75);
+  outline-offset: -1.5px;
+}
+
+[data-inspect-mode="true"] [data-inspect-label]::after {
+  content: attr(data-inspect-label);
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 40;
+  pointer-events: none;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  background: rgba(8, 47, 73, 0.92);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Subtle dark shell scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
