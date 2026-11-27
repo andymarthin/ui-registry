@@ -15,12 +15,22 @@ pnpm preview    # Preview the built static site locally
 pnpm check      # Run astro check && tsc --noEmit
 ```
 
+## Environment Variables
+
+Copy the example environment file to set the default public Hub base URL used in the Base URL input and 1-Line Prompt generator:
+
+```bash
+cp .env.example .env
+```
+
+- `PUBLIC_HUB_URL`: Public origin for your hosted hub (for example, `https://ui.example.com`). When unset or empty, the app falls back to `window.location.origin` in the browser.
+
 ## Fetching a Template Manifest
 
 Coding agents or terminal workflows can pull any template manifest directly:
 
 ```bash
-curl -s https://ui.marthin.web.id/r/glass-portfolio.md
+curl -s https://<your-hub-domain>/r/glass-portfolio.md
 ```
 
 ## Adding a New Template

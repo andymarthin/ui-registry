@@ -46,7 +46,9 @@ const CATEGORIES: readonly CategoryFilter[] = [
   'Logistics',
 ];
 
-const DEFAULT_BASE_URL = 'https://ui.marthin.web.id';
+const ENV_BASE_URL = (import.meta.env.PUBLIC_HUB_URL ?? '')
+  .trim()
+  .replace(/\/+$/, '');
 
 interface PreviewErrorBoundaryProps {
   templateName: string;
@@ -148,7 +150,7 @@ export default function HubApp() {
     const preferred = templates.find((t) => t.meta.slug === 'glass-portfolio');
     return preferred?.meta.slug ?? templates[0]?.meta.slug ?? '';
   });
-  const [baseUrl, setBaseUrl] = useState<string>(DEFAULT_BASE_URL);
+  const [baseUrl, setBaseUrl] = useState<string>(ENV_BASE_URL);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('preview');
@@ -212,9 +214,19 @@ export default function HubApp() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    if (!ENV_BASE_URL && typeof window !== 'undefined') {
+      setBaseUrl((current) => current || window.location.origin);
+    }
+  }, []);
+
   const cleanBaseUrl = useMemo(() => {
     const trimmed = baseUrl.trim().replace(/\/+$/, '');
-    return trimmed || DEFAULT_BASE_URL;
+    return (
+      trimmed ||
+      ENV_BASE_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
+    );
   }, [baseUrl]);
 
   const rawManifestUrl = activeTemplate
@@ -397,7 +409,7 @@ export default function HubApp() {
               type="url"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder={DEFAULT_BASE_URL}
+              placeholder={ENV_BASE_URL || 'https://ui.example.com'}
               spellCheck={false}
               className="h-8 w-full min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none sm:w-64"
             />
