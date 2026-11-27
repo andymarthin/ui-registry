@@ -213,14 +213,68 @@ const MOCK_PORTFOLIO: GlassPortfolioLayoutProps = {
   copyrightText: '© 2026 Soren Vance — Liquid Glass Portfolio Template',
 };
 
-export default function GlassPortfolioPreview({ inspect }: TemplatePreviewProps) {
+function deriveMonogram(name: string, fallback: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+}
+
+export default function GlassPortfolioPreview({
+  inspect,
+  customization,
+}: TemplatePreviewProps) {
+  const copy = customization?.copy;
+  const getCopy = (key: string, fallback: string) => {
+    const val = copy?.[key];
+    return val && val.trim().length > 0 ? val : fallback;
+  };
+
+  const brandName = getCopy('brandName', MOCK_PORTFOLIO.brandName);
+  const brandSubtitle = getCopy(
+    'brandSubtitle',
+    MOCK_PORTFOLIO.brandSubtitle ?? '',
+  );
+  const headline = getCopy('headline', MOCK_PORTFOLIO.hero.headline);
+  const bio = getCopy('bio', MOCK_PORTFOLIO.hero.bio);
+  const contactEmail = getCopy(
+    'contactEmail',
+    MOCK_PORTFOLIO.contactEmail ?? 'soren@vancelab.io',
+  );
+  const brandMonogram =
+    brandName !== MOCK_PORTFOLIO.brandName
+      ? deriveMonogram(brandName, MOCK_PORTFOLIO.brandMonogram ?? 'SV')
+      : MOCK_PORTFOLIO.brandMonogram;
+  const copyrightText =
+    brandName !== MOCK_PORTFOLIO.brandName
+      ? `© 2026 ${brandName} — Liquid Glass Portfolio Template`
+      : MOCK_PORTFOLIO.copyrightText;
+
+  const props: GlassPortfolioLayoutProps = {
+    ...MOCK_PORTFOLIO,
+    brandName,
+    brandSubtitle,
+    brandMonogram,
+    contactEmail,
+    copyrightText,
+    hero: {
+      ...MOCK_PORTFOLIO.hero,
+      headline,
+      bio,
+      secondaryCta: {
+        label: contactEmail,
+        href: `mailto:${contactEmail}`,
+      },
+    },
+  };
+
   return (
     <div
       data-inspect-mode={inspect ? 'true' : 'false'}
       className="min-h-screen bg-[#05060D]"
     >
       <InspectBox label="GlassPortfolioLayout" active={inspect}>
-        <GlassPortfolioLayout {...MOCK_PORTFOLIO} />
+        <GlassPortfolioLayout {...props} />
       </InspectBox>
     </div>
   );

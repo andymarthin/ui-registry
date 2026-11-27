@@ -236,16 +236,26 @@ const MOCK_SYSLOG: SyslogEntry[] = [
   },
 ];
 
-export default function HomelabOpsPreview({ inspect }: TemplatePreviewProps) {
+export default function HomelabOpsPreview({
+  inspect,
+  customization,
+}: TemplatePreviewProps) {
+  const copy = customization?.copy;
+  const getCopy = (key: string, fallback: string) => {
+    const val = copy?.[key];
+    return val && val.trim().length > 0 ? val : fallback;
+  };
+
   return (
     <div data-inspect-mode={inspect ? 'true' : 'false'}>
       <ProxmoxNocTerminal
-        clusterName="PVE-HOMELAB-01"
-        datacenter="RACK-A // 10GbE SFP+"
-        pveVersion="pve-manager/8.3.2"
+        clusterName={getCopy('clusterName', 'PVE-HOMELAB-01')}
+        datacenter={getCopy('datacenter', 'RACK-A // 10GbE SFP+')}
+        pveVersion={getCopy('pveVersion', 'pve-manager/8.3.2')}
         kernelVersion="6.8.12-4-pve"
-        uptime="42d 18h 09m"
+        uptime={getCopy('uptime', '42d 18h 09m')}
         quorumStatus="quorate"
+        operatorTag={getCopy('operatorTag', 'root@pve-noc')}
         nodes={MOCK_NODES}
         telemetry={MOCK_TELEMETRY}
         containers={MOCK_CONTAINERS}

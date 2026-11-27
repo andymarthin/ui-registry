@@ -122,10 +122,48 @@ const MOCK_PORTFOLIO_DATA: EditorialPortfolioProps = {
     'Typeset in Editorial Serif & Monospace · Archival warm cream paper (#F5F2EB).',
 };
 
-export default function Preview({ inspect = false }: TemplatePreviewProps) {
+function deriveEditorialMonogram(name: string, fallback: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  if (parts.length === 1) return `${parts[0][0]?.toUpperCase() ?? 'A'}.`;
+  return `${parts[0][0]?.toUpperCase() ?? ''}.${parts[1][0]?.toUpperCase() ?? ''}.`;
+}
+
+export default function Preview({
+  inspect = false,
+  customization,
+}: TemplatePreviewProps) {
+  const copy = customization?.copy;
+  const getCopy = (key: string, fallback: string) => {
+    const val = copy?.[key];
+    return val && val.trim().length > 0 ? val : fallback;
+  };
+
+  const authorName = getCopy('authorName', MOCK_PORTFOLIO_DATA.authorName);
+  const monogram =
+    authorName !== MOCK_PORTFOLIO_DATA.authorName
+      ? deriveEditorialMonogram(authorName, MOCK_PORTFOLIO_DATA.monogram)
+      : MOCK_PORTFOLIO_DATA.monogram;
+
+  const props: EditorialPortfolioProps = {
+    ...MOCK_PORTFOLIO_DATA,
+    authorName,
+    monogram,
+    authorRole: getCopy('authorRole', MOCK_PORTFOLIO_DATA.authorRole),
+    thesisStatement: getCopy(
+      'thesisStatement',
+      MOCK_PORTFOLIO_DATA.thesisStatement,
+    ),
+    availabilityLabel: getCopy(
+      'availabilityLabel',
+      MOCK_PORTFOLIO_DATA.availabilityLabel,
+    ),
+    email: getCopy('email', MOCK_PORTFOLIO_DATA.email),
+  };
+
   return (
     <div data-inspect-mode={inspect ? 'true' : 'false'}>
-      <EditorialPortfolio {...MOCK_PORTFOLIO_DATA} />
+      <EditorialPortfolio {...props} />
     </div>
   );
 }

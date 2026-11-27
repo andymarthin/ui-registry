@@ -81,10 +81,46 @@ const MOCK_SAAS_DATA: SwissLandingProps = {
   footerRight: 'STATUS: ALL 42 POPS OPERATIONAL',
 };
 
-export default function Preview({ inspect = false }: TemplatePreviewProps) {
+function deriveBrandCode(name: string, fallback: string): string {
+  const words = name
+    .replace(/[^A-Za-z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return fallback;
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
+}
+
+export default function Preview({
+  inspect = false,
+  customization,
+}: TemplatePreviewProps) {
+  const copy = customization?.copy;
+  const getCopy = (key: string, fallback: string) => {
+    const val = copy?.[key];
+    return val && val.trim().length > 0 ? val : fallback;
+  };
+
+  const brandName = getCopy('brandName', MOCK_SAAS_DATA.brandName);
+  const brandCode =
+    brandName !== MOCK_SAAS_DATA.brandName
+      ? deriveBrandCode(brandName, MOCK_SAAS_DATA.brandCode)
+      : MOCK_SAAS_DATA.brandCode;
+
+  const props: SwissLandingProps = {
+    ...MOCK_SAAS_DATA,
+    brandName,
+    brandCode,
+    headlineLine1: getCopy('headlineLine1', MOCK_SAAS_DATA.headlineLine1),
+    subheadline: getCopy('subheadline', MOCK_SAAS_DATA.subheadline),
+    primaryCtaLabel: getCopy('primaryCtaLabel', MOCK_SAAS_DATA.primaryCtaLabel),
+    cliCommand: getCopy('cliCommand', MOCK_SAAS_DATA.cliCommand),
+  };
+
   return (
     <div data-inspect-mode={inspect ? 'true' : 'false'}>
-      <SwissLanding {...MOCK_SAAS_DATA} />
+      <SwissLanding {...props} />
     </div>
   );
 }

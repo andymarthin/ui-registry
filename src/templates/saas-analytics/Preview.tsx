@@ -301,13 +301,26 @@ const MOCK_DATASETS: Record<AnalyticsTimeframe, TimeframeAnalyticsDataset> = {
   },
 };
 
-export default function SaasAnalyticsPreview({ inspect }: TemplatePreviewProps) {
+export default function SaasAnalyticsPreview({
+  inspect,
+  customization,
+}: TemplatePreviewProps) {
+  const copy = customization?.copy;
+  const getCopy = (key: string, fallback: string) => {
+    const val = copy?.[key];
+    return val && val.trim().length > 0 ? val : fallback;
+  };
+
   return (
     <div data-inspect-mode={inspect ? 'true' : 'false'}>
       <BentoAnalytics
-        workspaceName="Vektor Telemetry"
-        title="Revenue & Growth Overview"
-        subtitle="Net revenue velocity, retention cohort health, and channel attribution."
+        workspaceName={getCopy('workspaceName', 'Vektor Telemetry')}
+        title={getCopy('title', 'Revenue & Growth Overview')}
+        subtitle={getCopy(
+          'subtitle',
+          'Net revenue velocity, retention cohort health, and channel attribution.',
+        )}
+        syncLabel={getCopy('syncLabel', 'Live telemetry · Updated 2m ago')}
         defaultTimeframe="30D"
         datasets={MOCK_DATASETS}
       />

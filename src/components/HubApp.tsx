@@ -11,7 +11,9 @@ import {
   Lock,
   Menu,
   Monitor,
+  RotateCcw,
   Scan,
+  SlidersHorizontal,
   Smartphone,
   Sparkles,
   Tablet,
@@ -19,10 +21,19 @@ import {
   X,
 } from 'lucide-react';
 import {
+  buildCustomizationPromptClause,
+  countActiveCustomizations,
+  createDefaultCustomization,
+  serializeCustomizationParams,
+} from '../templates/customize';
+import { generateTemplateMarkdown } from '../templates/markdown';
+import {
   getAllTemplates,
   type TemplateCategory,
+  type TemplateCustomization,
   type TemplateEntry,
 } from '../templates/registry';
+import CustomizeMenu from './CustomizeMenu';
 
 type CategoryFilter = 'All' | TemplateCategory;
 type WorkspaceTab = 'preview' | 'raw' | 'prompt';
@@ -40,6 +51,7 @@ const CATEGORIES: readonly CategoryFilter[] = [
 const ENV_BASE_URL = (import.meta.env.PUBLIC_HUB_URL ?? '')
   .trim()
   .replace(/\/+$/, '');
+const BASE_PATH = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -79,11 +91,16 @@ export default function HubApp() {
     return preferred?.meta.slug ?? templates[0]?.meta.slug ?? '';
   });
   const [baseUrl, setBaseUrl] = useState<string>(ENV_BASE_URL);
+  const [detectedOrigin, setDetectedOrigin] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('preview');
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [inspect, setInspect] = useState<boolean>(false);
+  const [customizationsBySlug, setCustomizationsBySlug] = useState<
+    Record<string, TemplateCustomization>
+  >({});
+  const [customizeOpen, setCustomizeOpen] = useState<boolean>(false);
   const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [targetDir, setTargetDir] = useState<string>('');
@@ -134,6 +151,39 @@ export default function HubApp() {
     setInstruction(activeTemplate.meta.defaultInstruction);
   }, [activeTemplate?.meta.slug]);
 
+  const activeCustomization: TemplateCustomization = useMemo(() => {
+    if (!activeTemplate) return createDefaultCustomization();
+    return (
+      customizationsBySlug[activeTemplate.meta.slug] ??
+      createDefaultCustomization(activeTemplate.meta)
+    );
+  }, [activeTemplate, customizationsBySlug]);
+
+  const activeCustomizationCount = useMemo(() => {
+    if (!activeTemplate) return 0;
+    return countActiveCustomizations(activeCustomization, activeTemplate.meta);
+  }, [activeCustomization, activeTemplate]);
+
+  const isCustomized = activeCustomizationCount > 0;
+
+  const handleUpdateCustomization = (next: TemplateCustomization) => {
+    if (!activeTemplate) return;
+    setCustomizationsBySlug((prev) => ({
+      ...prev,
+      [activeTemplate.meta.slug]: next,
+    }));
+  };
+
+  const handleResetCustomization = () => {
+    if (!activeTemplate) return;
+    setCustomizationsBySlug((prev) => {
+      if (!(activeTemplate.meta.slug in prev)) return prev;
+      const next = { ...prev };
+      delete next[activeTemplate.meta.slug];
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -144,8 +194,20 @@ export default function HubApp() {
   }, [mobileMenuOpen]);
 
   useEffect(() => {
-    if (!ENV_BASE_URL && typeof window !== 'undefined') {
-      setBaseUrl((current) => current || window.location.origin);
+    if (!customizeOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCustomizeOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [customizeOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const autoBase = `${window.location.origin}${BASE_PATH}`;
+    setDetectedOrigin(autoBase);
+    if (!ENV_BASE_URL) {
+      setBaseUrl((current) => current || autoBase);
     }
   }, []);
 
@@ -157,10 +219,28 @@ export default function HubApp() {
     );
   };
 
+  const postCustomizationToIframe = (
+    nextCustomization: TemplateCustomization,
+  ) => {
+    if (typeof window === 'undefined') return;
+    previewIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: 'ui-hub:set-customization',
+        customization: nextCustomization,
+      },
+      window.location.origin,
+    );
+  };
+
   useEffect(() => {
     if (activeTab !== 'preview' || !activeTemplate) return;
     postInspectToIframe(inspect);
   }, [inspect, activeTemplate?.meta.slug, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'preview' || !activeTemplate) return;
+    postCustomizationToIframe(activeCustomization);
+  }, [activeCustomization, activeTemplate?.meta.slug, activeTab]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -172,24 +252,48 @@ export default function HubApp() {
         event.data.type === 'ui-hub:preview-ready'
       ) {
         postInspectToIframe(inspect);
+        postCustomizationToIframe(activeCustomization);
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [inspect]);
+  }, [inspect, activeCustomization]);
 
   const cleanBaseUrl = useMemo(() => {
     const trimmed = baseUrl.trim().replace(/\/+$/, '');
     return (
       trimmed ||
       ENV_BASE_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : '')
+      detectedOrigin ||
+      (typeof window !== 'undefined'
+        ? `${window.location.origin}${BASE_PATH}`
+        : '')
     );
-  }, [baseUrl]);
+  }, [baseUrl, detectedOrigin]);
 
   const rawManifestUrl = activeTemplate
     ? `${cleanBaseUrl}/r/${activeTemplate.meta.slug}.md`
     : '';
+
+  const fullPageHref = useMemo(() => {
+    if (!activeTemplate) return BASE_PATH ? `${BASE_PATH}/` : '/';
+    const params = serializeCustomizationParams(
+      activeCustomization,
+      activeTemplate.meta,
+    ).toString();
+    return `${BASE_PATH}/preview/${activeTemplate.meta.slug}/${params ? `?${params}` : ''}`;
+  }, [activeTemplate, activeCustomization]);
+
+  const displayMarkdown = useMemo(() => {
+    if (!activeTemplate) return '';
+    return isCustomized
+      ? generateTemplateMarkdown(
+          activeTemplate.meta,
+          activeTemplate.files,
+          activeCustomization,
+        )
+      : activeTemplate.markdown;
+  }, [activeTemplate, isCustomized, activeCustomization]);
 
   const oneLinePrompt = useMemo(() => {
     if (!activeTemplate) return '';
@@ -202,13 +306,24 @@ export default function HubApp() {
     const cleanInstruction =
       instruction.replace(/\s+/g, ' ').trim() ||
       activeTemplate.meta.defaultInstruction;
+    const customClause = isCustomized
+      ? buildCustomizationPromptClause(activeCustomization, activeTemplate.meta)
+      : '';
 
     if (strictVerbatim) {
+      if (customClause) {
+        return `Run \`${curlCmd}\`, write every file verbatim to \`${cleanDir}\` preserving layout geometry while applying these customizations: ${customClause}, and wire data only via component props: ${cleanInstruction}`;
+      }
       return `Run \`${curlCmd}\`, write every file verbatim to \`${cleanDir}\` without altering colors, typography, border radius, or layout geometry, and wire data only via component props: ${cleanInstruction}`;
+    }
+    if (customClause) {
+      return `Run \`${curlCmd}\` to inspect the template manifest, write the components into \`${cleanDir}\` adapting styling as needed while applying these customizations: ${customClause}, and wire data via component props: ${cleanInstruction}`;
     }
     return `Run \`${curlCmd}\` to inspect the template manifest, write the components into \`${cleanDir}\` adapting styling as needed, and wire data via component props: ${cleanInstruction}`;
   }, [
     activeTemplate,
+    activeCustomization,
+    isCustomized,
     bearerAuth,
     instruction,
     rawManifestUrl,
@@ -367,7 +482,11 @@ export default function HubApp() {
               type="url"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder={ENV_BASE_URL || 'https://ui.example.com'}
+              placeholder={
+                ENV_BASE_URL ||
+                detectedOrigin ||
+                'Auto-detected from current host'
+              }
               spellCheck={false}
               className="h-8 w-full min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none sm:w-64"
             />
@@ -592,8 +711,27 @@ export default function HubApp() {
 
                     {/* Right Toolbar Actions */}
                     <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        aria-expanded={customizeOpen}
+                        onClick={() => setCustomizeOpen((prev) => !prev)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          customizeOpen || isCustomized
+                            ? 'border-sky-500/50 bg-sky-950/50 text-sky-300'
+                            : 'border-zinc-800 bg-zinc-900/70 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100'
+                        }`}
+                      >
+                        <SlidersHorizontal className="h-3.5 w-3.5" />
+                        <span>Customize</span>
+                        {activeCustomizationCount > 0 && (
+                          <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-sky-500/20 px-1.5 py-0.2 font-mono text-[10px] font-semibold text-sky-300">
+                            {activeCustomizationCount}
+                          </span>
+                        )}
+                      </button>
+
                       <a
-                        href={`/preview/${activeTemplate.meta.slug}`}
+                        href={fullPageHref}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
@@ -632,31 +770,76 @@ export default function HubApp() {
                     </div>
                   </div>
 
-                  {/* Preview Stage */}
-                  <div className="flex-1 overflow-auto bg-[#0E0E11] p-3 sm:p-5 lg:p-6">
-                    <div
-                      style={{ width: viewportWidthStyle, maxWidth: '100%' }}
-                      className={`mx-auto overflow-hidden transition-[width] duration-300 ease-out ${
-                        viewport === 'desktop'
-                          ? 'rounded-xl border border-zinc-800/80 shadow-xl'
-                          : 'rounded-2xl border-2 border-zinc-700/80 shadow-2xl ring-1 ring-white/5'
-                      }`}
-                    >
-                      <iframe
-                        ref={previewIframeRef}
-                        key={activeTemplate.meta.slug}
-                        src={`/preview/${activeTemplate.meta.slug}?embedded=1`}
-                        title={`${activeTemplate.meta.name} live preview`}
-                        onLoad={() => postInspectToIframe(inspect)}
-                        className={`block w-full border-0 bg-[#0A0A0B] ${
-                          viewport === 'mobile'
-                            ? 'h-[780px]'
-                            : viewport === 'tablet'
-                              ? 'h-[820px]'
-                              : 'h-[calc(100vh-14.5rem)] min-h-[640px]'
+                  {/* Preview Stage + Customize Panel */}
+                  <div className="relative flex min-h-0 flex-1">
+                    <div className="min-w-0 flex-1 overflow-auto bg-[#0E0E11] p-3 sm:p-5 lg:p-6">
+                      <div
+                        style={{ width: viewportWidthStyle, maxWidth: '100%' }}
+                        className={`mx-auto overflow-hidden transition-[width] duration-300 ease-out ${
+                          viewport === 'desktop'
+                            ? 'rounded-xl border border-zinc-800/80 shadow-xl'
+                            : 'rounded-2xl border-2 border-zinc-700/80 shadow-2xl ring-1 ring-white/5'
                         }`}
-                      />
+                      >
+                        <iframe
+                          ref={previewIframeRef}
+                          key={activeTemplate.meta.slug}
+                          src={`${BASE_PATH}/preview/${activeTemplate.meta.slug}/?embedded=1`}
+                          title={`${activeTemplate.meta.name} live preview`}
+                          onLoad={() => {
+                            postInspectToIframe(inspect);
+                            postCustomizationToIframe(activeCustomization);
+                          }}
+                          className={`block w-full border-0 bg-[#0A0A0B] ${
+                            viewport === 'mobile'
+                              ? 'h-[780px]'
+                              : viewport === 'tablet'
+                                ? 'h-[820px]'
+                                : 'h-[calc(100vh-14.5rem)] min-h-[640px]'
+                          }`}
+                        />
+                      </div>
                     </div>
+
+                    {/* Desktop / Large Side Panel */}
+                    {customizeOpen && (
+                      <aside className="hidden w-80 shrink-0 border-l border-zinc-800/80 bg-[#0A0A0B] lg:flex lg:flex-col xl:w-96">
+                        <CustomizeMenu
+                          template={activeTemplate}
+                          customization={activeCustomization}
+                          activeCount={activeCustomizationCount}
+                          onChange={handleUpdateCustomization}
+                          onReset={handleResetCustomization}
+                          onClose={() => setCustomizeOpen(false)}
+                          onJumpToTab={(tab) => setActiveTab(tab)}
+                        />
+                      </aside>
+                    )}
+
+                    {/* Smaller Screen Slide-Over Drawer */}
+                    {customizeOpen && (
+                      <div className="fixed inset-0 z-50 flex justify-end lg:hidden">
+                        <div
+                          className="fixed inset-0 bg-black/70 backdrop-blur-xs"
+                          onClick={() => setCustomizeOpen(false)}
+                          aria-hidden="true"
+                        />
+                        <aside className="relative z-10 flex h-full w-80 max-w-[90vw] flex-col border-l border-zinc-800 bg-[#0A0A0B] shadow-2xl">
+                          <CustomizeMenu
+                            template={activeTemplate}
+                            customization={activeCustomization}
+                            activeCount={activeCustomizationCount}
+                            onChange={handleUpdateCustomization}
+                            onReset={handleResetCustomization}
+                            onClose={() => setCustomizeOpen(false)}
+                            onJumpToTab={(tab) => {
+                              setCustomizeOpen(false);
+                              setActiveTab(tab);
+                            }}
+                          />
+                        </aside>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -664,6 +847,46 @@ export default function HubApp() {
               {/* Tab 2: Agent Raw */}
               {activeTab === 'raw' && (
                 <div className="flex-1 space-y-4 overflow-y-auto p-4 lg:p-6">
+                  {isCustomized && (
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-sky-500/30 bg-sky-950/25 px-4 py-2.5">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 font-medium text-sky-300">
+                          <SlidersHorizontal className="h-3 w-3" />
+                          <span>Customized ({activeCustomizationCount})</span>
+                        </span>
+                        <span className="text-zinc-300">
+                          Showing customized manifest &middot;{' '}
+                          {activeCustomizationCount}{' '}
+                          {activeCustomizationCount === 1
+                            ? 'override'
+                            : 'overrides'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('preview');
+                            setCustomizeOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800"
+                        >
+                          <SlidersHorizontal className="h-3 w-3" />
+                          <span>Customize</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetCustomization}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase">
@@ -675,6 +898,20 @@ export default function HubApp() {
                     </div>
 
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {!isCustomized && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('preview');
+                            setCustomizeOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+                        >
+                          <SlidersHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+                          <span>Customize</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() =>
@@ -697,9 +934,7 @@ export default function HubApp() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          triggerCopy('raw-md', activeTemplate.markdown)
-                        }
+                        onClick={() => triggerCopy('raw-md', displayMarkdown)}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-950 transition hover:bg-white"
                       >
                         {copiedKey === 'raw-md' ? (
@@ -727,7 +962,7 @@ export default function HubApp() {
                       </span>
                     </div>
                     <pre className="max-h-[65vh] overflow-auto p-4 font-mono text-xs leading-relaxed text-zinc-300">
-                      <code>{activeTemplate.markdown}</code>
+                      <code>{displayMarkdown}</code>
                     </pre>
                   </div>
                 </div>
@@ -738,11 +973,45 @@ export default function HubApp() {
                 <div className="flex-1 overflow-y-auto p-4 lg:p-6">
                   <div className="mx-auto max-w-4xl space-y-5">
                     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-                      <div className="mb-4 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-sky-400" />
-                        <h3 className="text-sm font-medium text-zinc-100">
-                          Agent Prompt Builder
-                        </h3>
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-sky-400" />
+                          <h3 className="text-sm font-medium text-zinc-100">
+                            Agent Prompt Builder
+                          </h3>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isCustomized && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 text-xs font-medium text-sky-300">
+                              <SlidersHorizontal className="h-3 w-3" />
+                              <span>
+                                Customized ({activeCustomizationCount})
+                              </span>
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTab('preview');
+                              setCustomizeOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800"
+                          >
+                            <SlidersHorizontal className="h-3 w-3" />
+                            <span>Customize</span>
+                          </button>
+                          {isCustomized && (
+                            <button
+                              type="button"
+                              onClick={handleResetCustomization}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#0A0A0B] px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span>Reset</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="space-y-4">

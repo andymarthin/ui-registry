@@ -371,11 +371,44 @@ const SAMPLE_SHIPMENTS: ShipmentRecord[] = [
   },
 ];
 
-export default function LogisticsHubPreview({ inspect = false }: TemplatePreviewProps) {
+const DEFAULT_BREADCRUMBS = ['Operations', 'Global Freight', 'Control Tower'];
+
+export default function LogisticsHubPreview({
+  inspect = false,
+  customization,
+}: TemplatePreviewProps) {
+  const copy = customization?.copy;
+  const getCopy = (key: string, fallback: string) => {
+    const val = copy?.[key];
+    return val && val.trim().length > 0 ? val : fallback;
+  };
+
+  const rawBreadcrumbs = copy?.breadcrumbs;
+  const parsedBreadcrumbs =
+    rawBreadcrumbs && rawBreadcrumbs.trim().length > 0
+      ? rawBreadcrumbs
+          .split('/')
+          .map((part) => part.trim())
+          .filter(Boolean)
+      : DEFAULT_BREADCRUMBS;
+  const breadcrumbs =
+    parsedBreadcrumbs.length > 0 ? parsedBreadcrumbs : DEFAULT_BREADCRUMBS;
+
   return (
     <div data-inspect-mode={inspect ? 'true' : 'false'}>
       <InspectBox label="LogisticsWorkspace" active={inspect}>
         <LogisticsWorkspace
+          breadcrumbs={breadcrumbs}
+          workspaceTitle={getCopy(
+            'workspaceTitle',
+            'Freight & Customs Dispatch',
+          )}
+          searchPlaceholder={getCopy(
+            'searchPlaceholder',
+            'Search tracking ID, lane, carrier, or vessel...',
+          )}
+          newShipmentLabel={getCopy('newShipmentLabel', 'New Shipment')}
+          exportCsvLabel={getCopy('exportCsvLabel', 'Export CSV')}
           kpis={SAMPLE_KPIS}
           shipments={SAMPLE_SHIPMENTS}
           initialSelectedId="shp-1"
