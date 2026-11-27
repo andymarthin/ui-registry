@@ -1,5 +1,6 @@
 ---
 import '../../styles/global.css';
+import HeadMeta from '../../components/HeadMeta.astro';
 import TemplateFullscreenPreview from '../../components/TemplateFullscreenPreview';
 import { getAllTemplates, type TemplateEntry } from '../../templates/registry';
 
@@ -18,14 +19,12 @@ const { template } = Astro.props as { template: TemplateEntry };
 <!doctype html>
 <html lang="en" class="dark">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{template.meta.name} — UI Template Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
+    <HeadMeta
+      title={`${template.meta.name} (${template.meta.styleTag}) — UI Template Hub`}
+      description={`${template.meta.description} Style: ${template.meta.styleFull}. Category: ${template.meta.category}.`}
+      themeColor={template.meta.swatchBg}
+      colorScheme="dark light"
+      ogImageAlt={`${template.meta.name} — ${template.meta.styleFull} template preview on UI Template Hub`}
     />
   </head>
   <body

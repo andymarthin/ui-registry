@@ -1,19 +1,17 @@
 ---
 import '../styles/global.css';
+import HeadMeta from '../components/HeadMeta.astro';
 import HubApp from '../components/HubApp';
 ---
 
 <!doctype html>
 <html lang="en" class="dark">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UI Template Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
+    <HeadMeta
+      title="UI Template Hub — Live Previews & Agent-Ready UI Manifests"
+      description="Static UI template registry with interactive Desktop, Tablet, and Mobile previews, live visual customization, inspect boundaries, and copy-ready /r/<slug>.md manifests for coding agents."
+      themeColor="#0A0A0B"
+      colorScheme="dark"
     />
   </head>
   <body class="bg-[#0A0A0B] text-zinc-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">

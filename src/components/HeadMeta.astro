@@ -1,0 +1,78 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  themeColor?: string;
+  colorScheme?: string;
+  ogImagePath?: string;
+  ogImageAlt?: string;
+}
+
+const {
+  title,
+  description,
+  themeColor = '#0A0A0B',
+  colorScheme = 'dark',
+  ogImagePath = 'og-image.png',
+  ogImageAlt = 'UI Template Hub — Live multi-viewport previews and agent-ready UI manifests',
+} = Astro.props;
+
+const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+const withBase = (path: string) => `${basePath}/${path.replace(/^\/+/, '')}`;
+const envOrigin = (import.meta.env.PUBLIC_HUB_URL ?? '').trim().replace(/\/+$/, '');
+const siteOrigin = Astro.site ? Astro.site.origin : '';
+
+let canonicalUrl: string | undefined;
+if (Astro.site) {
+  canonicalUrl = new URL(Astro.url.pathname, Astro.site).toString();
+} else if (envOrigin) {
+  const pathname = Astro.url.pathname || '/';
+  const routePath =
+    basePath && pathname.startsWith(basePath)
+      ? pathname.slice(basePath.length) || '/'
+      : pathname;
+  canonicalUrl = `${envOrigin}${routePath.startsWith('/') ? routePath : `/${routePath}`}`;
+}
+
+const ogImageUrl = siteOrigin
+  ? `${siteOrigin}${withBase(ogImagePath)}`
+  : envOrigin
+    ? `${envOrigin}/${ogImagePath.replace(/^\/+/, '')}`
+    : withBase(ogImagePath);
+---
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta name="theme-color" content={themeColor} />
+<meta name="color-scheme" content={colorScheme} />
+<meta name="generator" content={Astro.generator} />
+{canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+
+<link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
+<link rel="apple-touch-icon" sizes="180x180" href={withBase('apple-touch-icon.png')} />
+<link rel="manifest" href={withBase('site.webmanifest')} />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="UI Template Hub" />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+{canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+<meta property="og:image" content={ogImageUrl} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={ogImageAlt} />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageUrl} />
+<meta name="twitter:image:alt" content={ogImageAlt} />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+  rel="stylesheet"
+/>
