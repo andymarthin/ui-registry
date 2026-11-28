@@ -6,8 +6,6 @@
 └── <file-b>   # <responsibility>
 ```
 
-- **Obsidian Spec:** `Projects/ui-template-team/specs/<slug>.md`
-
 ## Evidence
 
 - **Before:** <baseline state, missing capability, or failing check>
