@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Check,
   Code2,
   Palette,
@@ -14,6 +15,11 @@ import {
   FONT_OPTIONS,
   RADIUS_OPTIONS,
 } from '../templates/customize';
+import {
+  THEME_SCHEMES,
+  applyThemeScheme,
+  matchThemeScheme,
+} from '../templates/design-schema';
 import type {
   DensityChoice,
   FontFamilyChoice,
@@ -29,7 +35,7 @@ export interface CustomizeMenuProps {
   onChange: (next: TemplateCustomization) => void;
   onReset: () => void;
   onClose: () => void;
-  onJumpToTab: (tab: 'raw' | 'prompt') => void;
+  onJumpToTab: (tab: 'design' | 'raw' | 'prompt') => void;
 }
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -45,6 +51,14 @@ export default function CustomizeMenu({
 }: CustomizeMenuProps) {
   const { tokens, copy } = customization;
   const customFields = template.meta.customFields ?? [];
+
+  const isDefaultTokens =
+    tokens.accentColor === 'default' &&
+    tokens.radiusScale === 'default' &&
+    tokens.fontFamily === 'default' &&
+    tokens.density === 'default';
+  const matchedScheme = isDefaultTokens ? undefined : matchThemeScheme(tokens);
+  const activeSchemeId = isDefaultTokens ? 'default' : matchedScheme?.id;
 
   const isCustomAccent =
     tokens.accentColor !== 'default' && HEX_COLOR_RE.test(tokens.accentColor);
@@ -144,6 +158,79 @@ export default function CustomizeMenu({
             <h4 className="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
               Visual Tokens
             </h4>
+          </div>
+
+          {/* Theme Schema */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-zinc-300">
+                Theme Schema
+              </span>
+              <span className="truncate font-mono text-[11px] text-zinc-400">
+                {matchedScheme
+                  ? matchedScheme.name
+                  : isDefaultTokens
+                    ? 'Template Default'
+                    : 'Custom'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {THEME_SCHEMES.map((preset) => {
+                const selected = activeSchemeId === preset.id;
+                const swatchBg =
+                  preset.id === 'default'
+                    ? template.meta.swatchBg || preset.swatchBg
+                    : preset.swatchBg;
+                const swatchBorder =
+                  preset.id === 'default'
+                    ? template.meta.swatchBorder || preset.swatchBorder
+                    : preset.swatchBorder;
+                const swatchAccent =
+                  preset.id === 'default'
+                    ? template.meta.swatchAccent || preset.swatchAccent
+                    : preset.swatchAccent;
+
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    title={preset.description}
+                    aria-pressed={selected}
+                    onClick={() =>
+                      onChange(applyThemeScheme(customization, preset.id))
+                    }
+                    className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-[11px] font-medium transition ${
+                      preset.id === 'default' ? 'col-span-2' : ''
+                    } ${
+                      selected
+                        ? 'border-sky-500/70 bg-sky-950/35 text-zinc-100 ring-1 ring-sky-400/50'
+                        : 'border-zinc-800/80 bg-zinc-950 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border"
+                      style={{
+                        backgroundColor: swatchBg,
+                        borderColor: swatchBorder,
+                      }}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: swatchAccent }}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-left">
+                      {preset.name}
+                    </span>
+                    {selected && (
+                      <Check className="h-3 w-3 shrink-0 text-sky-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Accent Color */}
@@ -420,25 +507,33 @@ export default function CustomizeMenu({
             aria-hidden="true"
             className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"
           />
-          <span>Live-synced to Preview, Agent Raw &amp; 1-Line Prompt</span>
+          <span>Live-synced to Preview, Design Guide, Raw &amp; Prompt</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => onJumpToTab('design')}
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+          >
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+            <span className="truncate">Design Guide</span>
+          </button>
           <button
             type="button"
             onClick={() => onJumpToTab('raw')}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
           >
-            <Code2 className="h-3.5 w-3.5 text-zinc-400" />
-            <span>Agent Raw</span>
+            <Code2 className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+            <span className="truncate">Agent Raw</span>
           </button>
           <button
             type="button"
             onClick={() => onJumpToTab('prompt')}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
           >
-            <Terminal className="h-3.5 w-3.5 text-zinc-400" />
-            <span>1-Line Prompt</span>
+            <Terminal className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+            <span className="truncate">1-Line Prompt</span>
           </button>
         </div>
       </div>
