@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { generateDesignGuideMarkdown } from './design-guide';
 import { generateTemplateMarkdown } from './markdown';
 import type {
   TemplateEntry,
@@ -101,6 +102,7 @@ function buildRegistry(): TemplateEntry[] {
       Preview,
       files,
       markdown: generateTemplateMarkdown(meta, files),
+      designGuide: generateDesignGuideMarkdown(meta),
     });
   }
 

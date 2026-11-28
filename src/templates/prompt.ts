@@ -1,5 +1,6 @@
 import { serializeCustomizationParams } from './customize';
-import type { TemplateCustomization, TemplateMeta } from './types';
+import { resolveDesignGuidePath } from './design-guide';
+import type { DesignGuideTarget, TemplateCustomization, TemplateMeta } from './types';
 
 function stripTrailingSlashes(value: string | undefined): string {
   return (value ?? '').trim().replace(/\/+$/, '');
@@ -28,6 +29,10 @@ export function resolveBaseUrl(options: ResolveBaseUrlOptions): string {
 
 export function buildRawManifestUrl(cleanBaseUrl: string, slug: string): string {
   return `${stripTrailingSlashes(cleanBaseUrl)}/r/${slug}.md`;
+}
+
+export function buildDesignGuideUrl(cleanBaseUrl: string, slug: string): string {
+  return `${stripTrailingSlashes(cleanBaseUrl)}/r/${slug}.design.md`;
 }
 
 export interface BuildPreviewHrefOptions {
@@ -60,6 +65,7 @@ export interface BuildOneLinePromptOptions {
   strictVerbatim: boolean;
   bearerAuth: boolean;
   customClause?: string;
+  designGuideTarget?: DesignGuideTarget;
 }
 
 const AUTO_DETECT_TARGET_PHRASE =
@@ -82,15 +88,24 @@ export function buildOneLinePrompt(options: BuildOneLinePromptOptions): string {
     ? `into \`${cleanDir}\``
     : AUTO_DETECT_TARGET_PHRASE;
 
+  const designGuideTarget = options.designGuideTarget ?? 'root';
+  let designGuideClause = '';
+  if (designGuideTarget === 'root') {
+    designGuideClause = ', write `DESIGN.md` to the project root as a design reference for future UI';
+  } else if (designGuideTarget === 'targetDir') {
+    const targetDesignPath = resolveDesignGuidePath(cleanDir, 'targetDir') ?? 'DESIGN.md';
+    designGuideClause = `, write \`${targetDesignPath}\` as a design reference for future UI`;
+  }
+
   if (options.strictVerbatim) {
     if (cleanClause) {
-      return `Run \`${curlCmd}\`, write every file verbatim ${strictTargetPhrase} preserving layout geometry while applying these customizations: ${cleanClause}, and wire data only via component props: ${cleanInstruction}`;
+      return `Run \`${curlCmd}\`, write every file verbatim ${strictTargetPhrase} preserving layout geometry while applying these customizations: ${cleanClause}${designGuideClause}, and wire data only via component props: ${cleanInstruction}`;
     }
-    return `Run \`${curlCmd}\`, write every file verbatim ${strictTargetPhrase} without altering colors, typography, border radius, or layout geometry, and wire data only via component props: ${cleanInstruction}`;
+    return `Run \`${curlCmd}\`, write every file verbatim ${strictTargetPhrase} without altering colors, typography, border radius, or layout geometry${designGuideClause}, and wire data only via component props: ${cleanInstruction}`;
   }
 
   if (cleanClause) {
-    return `Run \`${curlCmd}\` to inspect the template manifest, write the components ${adaptTargetPhrase} adapting styling as needed while applying these customizations: ${cleanClause}, and wire data via component props: ${cleanInstruction}`;
+    return `Run \`${curlCmd}\` to inspect the template manifest, write the components ${adaptTargetPhrase} adapting styling as needed while applying these customizations: ${cleanClause}${designGuideClause}, and wire data via component props: ${cleanInstruction}`;
   }
-  return `Run \`${curlCmd}\` to inspect the template manifest, write the components ${adaptTargetPhrase} adapting styling as needed, and wire data via component props: ${cleanInstruction}`;
+  return `Run \`${curlCmd}\` to inspect the template manifest, write the components ${adaptTargetPhrase} adapting styling as needed${designGuideClause}, and wire data via component props: ${cleanInstruction}`;
 }

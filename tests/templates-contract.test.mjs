@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { generateDesignGuideMarkdown } from '../src/templates/design-guide.ts';
+import { validateDesignSchema } from '../src/templates/design-schema.ts';
 import { generateTemplateMarkdown } from '../src/templates/markdown.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -610,7 +612,44 @@ describe('templates contract', () => {
         `${dirName}: at least one deliverable .tsx file must include data-inspect-label=`,
       );
 
+      assert.deepEqual(
+        validateDesignSchema(meta.design, `${dirName}.meta.design`),
+        [],
+        `${dirName}: meta.design must satisfy TemplateDesignSchema`,
+      );
+      assert.equal(
+        meta.design.palette.canvas.toUpperCase(),
+        meta.swatchBg.toUpperCase(),
+        `${dirName}: meta.design.palette.canvas must match meta.swatchBg`,
+      );
+      assert.equal(
+        meta.design.palette.accent.toUpperCase(),
+        meta.swatchAccent.toUpperCase(),
+        `${dirName}: meta.design.palette.accent must match meta.swatchAccent`,
+      );
+
+      const designGuide = generateDesignGuideMarkdown(meta);
+      for (const expectedHeading of [
+        `# DESIGN.md — ${meta.name}`,
+        '## Color Palette & Tokens',
+        '## Typography',
+        '## Design Rules',
+      ]) {
+        assert.ok(
+          designGuide.includes(expectedHeading),
+          `${dirName}: generated DESIGN.md missing "${expectedHeading}"`,
+        );
+      }
+
       const markdown = generateTemplateMarkdown(meta, templateFiles);
+      assert.ok(
+        markdown.includes('## File: `DESIGN.md`'),
+        `${dirName}: markdown output missing ## File: \`DESIGN.md\``,
+      );
+      assert.ok(
+        markdown.includes('````markdown\n'),
+        `${dirName}: markdown output missing 4-backtick markdown fence for DESIGN.md`,
+      );
       for (const file of templateFiles) {
         const fenceLang = file.filename.endsWith('.ts') ? 'ts' : 'tsx';
         const expectedSection = [

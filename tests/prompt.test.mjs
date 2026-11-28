@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  buildDesignGuideUrl,
   buildOneLinePrompt,
   buildPreviewHref,
   buildRawManifestUrl,
@@ -35,19 +36,6 @@ const SAMPLE_META = {
     },
   ],
 };
-
-describe('hasConfiguredHubToken', () => {
-  it('returns false for undefined, empty, and whitespace-only tokens', () => {
-    assert.equal(hasConfiguredHubToken(undefined), false);
-    assert.equal(hasConfiguredHubToken(''), false);
-    assert.equal(hasConfiguredHubToken('   \n\t  '), false);
-  });
-
-  it('returns true for non-empty tokens, with or without surrounding whitespace', () => {
-    assert.equal(hasConfiguredHubToken('secret-token'), true);
-    assert.equal(hasConfiguredHubToken('  secret-token  '), true);
-  });
-});
 
 describe('hasConfiguredHubToken', () => {
   it('returns false for undefined, empty, and whitespace-only tokens', () => {
@@ -157,6 +145,33 @@ describe('buildRawManifestUrl', () => {
   });
 });
 
+describe('buildDesignGuideUrl', () => {
+  it('builds /r/<slug>.design.md for root and subpath bases while stripping extra trailing slashes', () => {
+    assert.equal(
+      buildDesignGuideUrl('https://example.com', 'glass-portfolio'),
+      'https://example.com/r/glass-portfolio.design.md',
+    );
+    assert.equal(
+      buildDesignGuideUrl('  https://example.com/// ', 'saas-landing'),
+      'https://example.com/r/saas-landing.design.md',
+    );
+    assert.equal(
+      buildDesignGuideUrl(
+        'https://andymarthin.github.io/ui-registry',
+        'logistics-hub',
+      ),
+      'https://andymarthin.github.io/ui-registry/r/logistics-hub.design.md',
+    );
+    assert.equal(
+      buildDesignGuideUrl(
+        'https://andymarthin.github.io/ui-registry///',
+        'logistics-hub',
+      ),
+      'https://andymarthin.github.io/ui-registry/r/logistics-hub.design.md',
+    );
+  });
+});
+
 describe('buildPreviewHref', () => {
   it('handles root and subpath base paths without a slug', () => {
     assert.equal(buildPreviewHref({ basePath: '' }), '/');
@@ -249,41 +264,71 @@ describe('buildOneLinePrompt', () => {
     customClause: '',
   };
 
-  it('formats all 4 combinations of strictVerbatim x customClause', () => {
+  it('formats all 4 combinations of strictVerbatim x customClause with default root DESIGN.md clause', () => {
     assert.equal(
       buildOneLinePrompt({
         ...baseOptions,
         strictVerbatim: true,
         customClause: '',
+      }),
+      'Run `curl -s https://example.com/r/glass-portfolio.md`, write every file verbatim to `src/components/glass-portfolio` without altering colors, typography, border radius, or layout geometry, write `DESIGN.md` to the project root as a design reference for future UI, and wire data only via component props: Wire your data via props.',
+    );
+
+    assert.equal(
+      buildOneLinePrompt({
+        ...baseOptions,
+        strictVerbatim: true,
+        customClause: 'accent=#38BDF8, radius=pill',
+      }),
+      'Run `curl -s https://example.com/r/glass-portfolio.md`, write every file verbatim to `src/components/glass-portfolio` preserving layout geometry while applying these customizations: accent=#38BDF8, radius=pill, write `DESIGN.md` to the project root as a design reference for future UI, and wire data only via component props: Wire your data via props.',
+    );
+
+    assert.equal(
+      buildOneLinePrompt({
+        ...baseOptions,
+        strictVerbatim: false,
+        customClause: '',
+      }),
+      'Run `curl -s https://example.com/r/glass-portfolio.md` to inspect the template manifest, write the components into `src/components/glass-portfolio` adapting styling as needed, write `DESIGN.md` to the project root as a design reference for future UI, and wire data via component props: Wire your data via props.',
+    );
+
+    assert.equal(
+      buildOneLinePrompt({
+        ...baseOptions,
+        strictVerbatim: false,
+        customClause: 'accent=#38BDF8, radius=pill',
+      }),
+      'Run `curl -s https://example.com/r/glass-portfolio.md` to inspect the template manifest, write the components into `src/components/glass-portfolio` adapting styling as needed while applying these customizations: accent=#38BDF8, radius=pill, write `DESIGN.md` to the project root as a design reference for future UI, and wire data via component props: Wire your data via props.',
+    );
+  });
+
+  it('supports designGuideTarget="targetDir" and designGuideTarget="none"', () => {
+    assert.equal(
+      buildOneLinePrompt({
+        ...baseOptions,
+        strictVerbatim: true,
+        designGuideTarget: 'targetDir',
+      }),
+      'Run `curl -s https://example.com/r/glass-portfolio.md`, write every file verbatim to `src/components/glass-portfolio` without altering colors, typography, border radius, or layout geometry, write `src/components/glass-portfolio/DESIGN.md` as a design reference for future UI, and wire data only via component props: Wire your data via props.',
+    );
+
+    assert.equal(
+      buildOneLinePrompt({
+        ...baseOptions,
+        targetDir: '   ',
+        strictVerbatim: false,
+        designGuideTarget: 'targetDir',
+      }),
+      `Run \`curl -s https://example.com/r/glass-portfolio.md\` to inspect the template manifest, write the components ${"into the appropriate components directory matching this repository's existing folder structure"} adapting styling as needed, write \`DESIGN.md\` as a design reference for future UI, and wire data via component props: Wire your data via props.`,
+    );
+
+    assert.equal(
+      buildOneLinePrompt({
+        ...baseOptions,
+        strictVerbatim: true,
+        designGuideTarget: 'none',
       }),
       'Run `curl -s https://example.com/r/glass-portfolio.md`, write every file verbatim to `src/components/glass-portfolio` without altering colors, typography, border radius, or layout geometry, and wire data only via component props: Wire your data via props.',
-    );
-
-    assert.equal(
-      buildOneLinePrompt({
-        ...baseOptions,
-        strictVerbatim: true,
-        customClause: 'accent=#38BDF8, radius=pill',
-      }),
-      'Run `curl -s https://example.com/r/glass-portfolio.md`, write every file verbatim to `src/components/glass-portfolio` preserving layout geometry while applying these customizations: accent=#38BDF8, radius=pill, and wire data only via component props: Wire your data via props.',
-    );
-
-    assert.equal(
-      buildOneLinePrompt({
-        ...baseOptions,
-        strictVerbatim: false,
-        customClause: '',
-      }),
-      'Run `curl -s https://example.com/r/glass-portfolio.md` to inspect the template manifest, write the components into `src/components/glass-portfolio` adapting styling as needed, and wire data via component props: Wire your data via props.',
-    );
-
-    assert.equal(
-      buildOneLinePrompt({
-        ...baseOptions,
-        strictVerbatim: false,
-        customClause: 'accent=#38BDF8, radius=pill',
-      }),
-      'Run `curl -s https://example.com/r/glass-portfolio.md` to inspect the template manifest, write the components into `src/components/glass-portfolio` adapting styling as needed while applying these customizations: accent=#38BDF8, radius=pill, and wire data via component props: Wire your data via props.',
     );
   });
 
@@ -327,7 +372,7 @@ describe('buildOneLinePrompt', () => {
     });
     assert.equal(
       autoStrict,
-      `Run \`curl -s https://example.com/r/glass-portfolio.md\`, write every file verbatim ${autoPhrase} without altering colors, typography, border radius, or layout geometry, and wire data only via component props: Default instruction.`,
+      `Run \`curl -s https://example.com/r/glass-portfolio.md\`, write every file verbatim ${autoPhrase} without altering colors, typography, border radius, or layout geometry, write \`DESIGN.md\` to the project root as a design reference for future UI, and wire data only via component props: Default instruction.`,
     );
 
     const autoStrictCustom = buildOneLinePrompt({
@@ -338,7 +383,7 @@ describe('buildOneLinePrompt', () => {
     });
     assert.equal(
       autoStrictCustom,
-      `Run \`curl -s https://example.com/r/glass-portfolio.md\`, write every file verbatim ${autoPhrase} preserving layout geometry while applying these customizations: accent=#38BDF8, and wire data only via component props: Wire your data via props.`,
+      `Run \`curl -s https://example.com/r/glass-portfolio.md\`, write every file verbatim ${autoPhrase} preserving layout geometry while applying these customizations: accent=#38BDF8, write \`DESIGN.md\` to the project root as a design reference for future UI, and wire data only via component props: Wire your data via props.`,
     );
 
     const autoAdapt = buildOneLinePrompt({
@@ -349,7 +394,7 @@ describe('buildOneLinePrompt', () => {
     });
     assert.equal(
       autoAdapt,
-      `Run \`curl -s https://example.com/r/glass-portfolio.md\` to inspect the template manifest, write the components ${autoPhrase} adapting styling as needed, and wire data via component props: Wire your data via props.`,
+      `Run \`curl -s https://example.com/r/glass-portfolio.md\` to inspect the template manifest, write the components ${autoPhrase} adapting styling as needed, write \`DESIGN.md\` to the project root as a design reference for future UI, and wire data via component props: Wire your data via props.`,
     );
 
     const autoAdaptCustom = buildOneLinePrompt({
@@ -360,7 +405,7 @@ describe('buildOneLinePrompt', () => {
     });
     assert.equal(
       autoAdaptCustom,
-      `Run \`curl -s https://example.com/r/glass-portfolio.md\` to inspect the template manifest, write the components ${autoPhrase} adapting styling as needed while applying these customizations: radius=pill, and wire data via component props: Wire your data via props.`,
+      `Run \`curl -s https://example.com/r/glass-portfolio.md\` to inspect the template manifest, write the components ${autoPhrase} adapting styling as needed while applying these customizations: radius=pill, write \`DESIGN.md\` to the project root as a design reference for future UI, and wire data via component props: Wire your data via props.`,
     );
   });
 });

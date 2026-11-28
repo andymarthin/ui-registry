@@ -367,6 +367,58 @@ describe('serializeCustomizationParams & parseCustomizationParams', () => {
       'brand_Name-1.title': 'Valid Value',
     });
   });
+
+  it('parses ?scheme=<id> presets and gives individual token params precedence over scheme', () => {
+    const meta = makeMeta();
+
+    const fromScheme = parseCustomizationParams('?scheme=midnight-glass', meta);
+    assert.deepEqual(fromScheme.tokens, {
+      accentColor: '#38BDF8',
+      radiusScale: 'rounded',
+      fontFamily: 'sans',
+      density: 'comfortable',
+    });
+
+    const caseInsensitive = parseCustomizationParams('?scheme=PHOSPHOR-NOC', meta);
+    assert.deepEqual(caseInsensitive.tokens, {
+      accentColor: '#22C55E',
+      radiusScale: 'sharp',
+      fontFamily: 'mono',
+      density: 'compact',
+    });
+
+    const overridden = parseCustomizationParams(
+      '?scheme=midnight-glass&accent=%23ff4500&density=compact&copy.brandName=Orbit',
+      meta,
+    );
+    assert.deepEqual(overridden, {
+      tokens: {
+        accentColor: '#FF4500',
+        radiusScale: 'rounded',
+        fontFamily: 'sans',
+        density: 'compact',
+      },
+      copy: {
+        brandName: 'Orbit',
+        headline: 'Build faster',
+        ctaLabel: 'Get Started',
+      },
+    });
+
+    const invalidOverridesIgnored = parseCustomizationParams(
+      '?scheme=phosphor-noc&accent=not-hex&radius=huge&font=comic&density=ultra',
+      meta,
+    );
+    assert.deepEqual(invalidOverridesIgnored.tokens, {
+      accentColor: '#22C55E',
+      radiusScale: 'sharp',
+      fontFamily: 'mono',
+      density: 'compact',
+    });
+
+    const unknownScheme = parseCustomizationParams('?scheme=unknown-preset', meta);
+    assert.deepEqual(unknownScheme.tokens, DEFAULT_THEME_TOKENS);
+  });
 });
 
 describe('buildStageStyleAndAttrs', () => {

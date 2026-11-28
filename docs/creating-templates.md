@@ -58,6 +58,20 @@ Every template folder must export `meta: TemplateMeta` (defined in `src/template
 | `dependencies` | `string[]` | External npm packages required by the deliverable components (e.g. `['tailwindcss', 'lucide-react']`) |
 | `targetDir` | `string` | Default destination directory in consumer repos (e.g. `'src/components/my-template'`) |
 | `defaultInstruction` | `string` | Default data/copy wiring prompt pre-filled in the **1-Line Prompt** tab |
+| `design` | `TemplateDesignSchema` | Structured design system tokens, typography, geometry, patterns, and Do/Don't rules used to generate `DESIGN.md` and `/r/<slug>.design.md` |
+
+### `TemplateDesignSchema` (`meta.design`)
+
+Every `meta.ts` must include `design: TemplateDesignSchema` (defined in `src/templates/types.ts` and validated by `validateDesignSchema` in `src/templates/design-schema.ts`):
+
+- `id` (`string`), `version` (`string`), `mode` (`'dark' | 'light'`), `summary` (`string`)
+- `palette`: `canvas` (must match `meta.swatchBg` case-insensitively), `surface`, `surfaceElevated`, `text`, `textMuted`, `border`, `accent` (must match `meta.swatchAccent` case-insensitively), `accentForeground`, optional `semantic` (`success`, `warning`, `danger`, `info`)
+- `typography`: `display`, `body`, `mono`, `headingScale`, `bodyScale`
+- `geometry`: `radius`, `borderStyle`, `spacing`, `containerMaxWidth`
+- `elevation` (`string`), `motion` (`string`)
+- `components` (`string[]`, non-empty), `doRules` (`string[]`, non-empty), `dontRules` (`string[]`, non-empty)
+
+> **Customize presets (`THEME_SCHEMES`):** In the Hub's **Customize** drawer, users can pick from 7 `THEME_SCHEMES` presets (`default`, `midnight-glass`, `swiss-brutalist`, `editorial-paper`, `phosphor-noc`, `soft-bento`, `enterprise-blue`) or override individual accent, radius, font, density, and copy values (or pass `?scheme=<id>` in preview URLs, where individual token params override `scheme`). `resolveEffectiveDesignSchema` merges those overrides into the generated `DESIGN.md`.
 
 ### Example `meta.ts`
 
@@ -79,6 +93,54 @@ export const meta: TemplateMeta = {
   targetDir: 'src/components/my-template',
   defaultInstruction:
     'Wire the services array and incident log props to our /api/status endpoint without changing layout or styling.',
+  design: {
+    id: 'my-template-default',
+    version: '1.0.0',
+    mode: 'dark',
+    summary: 'Swiss precision dark uptime console with emerald health telemetry.',
+    palette: {
+      canvas: '#0B0D10',
+      surface: '#11141A',
+      surfaceElevated: '#181C24',
+      text: '#F4F4F5',
+      textMuted: '#A1A1AA',
+      border: '#1F2937',
+      accent: '#10B981',
+      accentForeground: '#052E16',
+      semantic: {
+        success: '#10B981',
+        warning: '#F59E0B',
+        danger: '#EF4444',
+      },
+    },
+    typography: {
+      display: 'Inter / system sans-serif',
+      body: 'Inter / system sans-serif',
+      mono: 'JetBrains Mono / ui-monospace',
+      headingScale: 'text-2xl font-semibold tracking-tight',
+      bodyScale: 'text-sm leading-relaxed',
+    },
+    geometry: {
+      radius: 'rounded-lg (0.5rem)',
+      borderStyle: '1px solid #1F2937',
+      spacing: '4px base grid (--spacing: 0.25rem)',
+      containerMaxWidth: 'max-w-5xl',
+    },
+    elevation: 'Hairline borders with restrained dark surface contrast',
+    motion: '150ms ease-out filter tab and row hover transitions',
+    components: [
+      'StatusHeader with live telemetry badge and filter tabs',
+      'ServiceList responsive 2-column service card grid',
+    ],
+    doRules: [
+      'Use font-mono for regions, uptime percentages, and telemetry labels.',
+      'Keep 1px #1F2937 borders on service cards.',
+    ],
+    dontRules: [
+      'Do not replace dark surface hierarchy with bright white panels.',
+      'Do not hardcode service records inside deliverable components.',
+    ],
+  },
 };
 ```
 
@@ -230,19 +292,22 @@ export default function Preview({ inspect = false }: TemplatePreviewProps) {
 
 ---
 
-## 5. Auto-Discovery & `/r/<slug>.md` Generation
+## 5. Auto-Discovery, `/r/<slug>.md`, & `/r/<slug>.design.md` Generation
 
 No manual registration is required. `src/templates/registry.ts` uses Vite `import.meta.glob` at build/dev time:
 
-- `./*/meta.ts` (eager) loads `meta`
+- `./*/meta.ts` (eager) loads `meta` (including `meta.design`)
 - `./*/Preview.tsx` (eager) loads the default React component
 - `./*/**/*.ts` and `./*/**/*.tsx` (eager with `query: '?raw', import: 'default'`) load the raw source text of every `.ts` / `.tsx` file recursively, except the top-level `Preview.tsx` and `meta.ts`
 
 For each matched `<slug>` that has both `meta.ts` and `Preview.tsx`:
 
 1. Each deliverable file's `targetPath` is computed as `${meta.targetDir.replace(/\/+$/, '')}/${filename}`, where `filename` is the path relative to the template folder (e.g. `layout/Sidebar.tsx`).
-2. `generateTemplateMarkdown(meta, files)` in `src/templates/markdown.ts` builds the Markdown manifest containing metadata, the 3 verbatim agent rules, and each file's `## File: \`<targetPath>\`` fenced `ts` (for `.ts`) or `tsx` (for `.tsx`) block.
-3. `src/pages/r/[slug].md.ts` prerenders one static route per template (`export const prerender = true`) serving `template.markdown` with `Content-Type: text/markdown; charset=utf-8`.
+2. `generateDesignGuideMarkdown(meta)` in `src/templates/design-guide.ts` builds the standalone `DESIGN.md` specification from `meta.design`.
+3. `generateTemplateMarkdown(meta, files, customization?, options?)` in `src/templates/markdown.ts` builds the Markdown manifest containing metadata, the agent rules (Rules 1–3 plus Rule 4 when `designGuideTarget !== 'none'`), each file's `## File: \`<targetPath>\`` fenced `ts` (for `.ts`) or `tsx` (for `.tsx`) block, and an embedded `## File: \`DESIGN.md\`` (or `<targetDir>/DESIGN.md`) ```` ````markdown ```` block (`designGuideTarget` defaults to `'root'`, configurable to `'targetDir'` or `'none'`).
+4. `src/pages/r/[slug].md.ts` prerenders `/r/<slug>.md` and `src/pages/r/[slug].design.md.ts` prerenders `/r/<slug>.design.md` (`export const prerender = true`, `Content-Type: text/markdown; charset=utf-8`).
+
+In consumer projects, `DESIGN.md` acts as the persistent post-install design reference so subsequent pages, modals, and forms match the installed template.
 
 ---
 
@@ -256,21 +321,28 @@ After adding or updating a template, verify everything builds and serves cleanly
    ```
    (Runs `astro check && tsc --noEmit` — confirm 0 errors.)
 
-2. **Run the production static build:**
+2. **Run unit & template contract tests:**
+   ```bash
+   pnpm test
+   ```
+   (Runs `tests/*.test.mjs`, including `validateDesignSchema(meta.design)`, swatch parity, `DESIGN.md` generation, standalone imports, and `data-inspect-label` checks.)
+
+3. **Run the production static build:**
    ```bash
    pnpm build
    ```
 
-3. **Confirm the generated Markdown manifest exists and excludes `Preview.tsx` and `meta.ts`:**
-   - Check that `dist/r/<slug>.md` was generated.
-   - Inspect `dist/r/<slug>.md` to verify it contains all intended deliverable `.ts` / `.tsx` files (including nested paths) under `## File: \`<targetDir>/<relative/path>.tsx\`` and does **not** include `Preview.tsx`, `meta.ts`, or any hub-internal imports (`InspectBox`, `../types`).
+4. **Confirm the generated Markdown manifest and Design Guide exist and exclude `Preview.tsx` and `meta.ts`:**
+   - Check that `dist/r/<slug>.md` and `dist/r/<slug>.design.md` were generated.
+   - Inspect `dist/r/<slug>.md` to verify it contains all intended deliverable `.ts` / `.tsx` files (including nested paths) under `## File: \`<targetDir>/<relative/path>.tsx\``, includes `## File: \`DESIGN.md\``, and does **not** include `Preview.tsx`, `meta.ts`, or any hub-internal imports (`InspectBox`, `../types`).
 
-4. **Preview and curl locally:**
+5. **Preview and curl locally:**
    ```bash
    pnpm preview
    ```
    In another terminal:
    ```bash
    curl -s http://localhost:4321/r/<slug>.md | head -n 40
+   curl -s http://localhost:4321/r/<slug>.design.md | head -n 40
    ```
-   Also open `http://localhost:4321` in the browser and test the new template across **Desktop**, **Tablet (768px)**, and **Mobile (390px)** viewports as well as **Inspect Templates** mode, **Agent Raw**, and **1-Line Prompt**.
+   Also open `http://localhost:4321` in the browser and test the new template across **Desktop**, **Tablet (768px)**, and **Mobile (390px)** viewports as well as **Inspect Templates** mode, **Customize** (`Theme Schema` presets), **Design Guide**, **Agent Raw**, and **1-Line Prompt**.

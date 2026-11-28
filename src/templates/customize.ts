@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { applyThemeScheme } from './design-schema';
 import type {
   DensityChoice,
   FontFamilyChoice,
@@ -202,8 +203,13 @@ export function parseCustomizationParams(
   search: string,
   meta?: TemplateMeta,
 ): TemplateCustomization {
-  const result = createDefaultCustomization(meta);
+  let result = createDefaultCustomization(meta);
   const params = new URLSearchParams(search);
+
+  const schemeParam = params.get('scheme');
+  if (schemeParam) {
+    result = applyThemeScheme(result, schemeParam);
+  }
 
   const accent = params.get('accent');
   if (accent && HEX_COLOR_RE.test(accent)) {

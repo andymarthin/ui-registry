@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BookOpen,
   Check,
   Code2,
   Copy,
+  Download,
   ExternalLink,
   Eye,
   Folder,
@@ -25,8 +27,14 @@ import {
   countActiveCustomizations,
   createDefaultCustomization,
 } from '../templates/customize';
+import { generateDesignGuideMarkdown } from '../templates/design-guide';
+import {
+  matchThemeScheme,
+  resolveEffectiveDesignSchema,
+} from '../templates/design-schema';
 import { generateTemplateMarkdown } from '../templates/markdown';
 import {
+  buildDesignGuideUrl,
   buildOneLinePrompt,
   buildPreviewHref,
   buildRawManifestUrl,
@@ -38,10 +46,11 @@ import {
   type TemplateCustomization,
   type TemplateEntry,
 } from '../templates/registry';
+import type { DesignGuideTarget } from '../templates/types';
 import CustomizeMenu from './CustomizeMenu';
 
 type CategoryFilter = 'All' | TemplateCategory;
-type WorkspaceTab = 'preview' | 'raw' | 'prompt';
+type WorkspaceTab = 'preview' | 'design' | 'raw' | 'prompt';
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
 
 const CATEGORIES: readonly CategoryFilter[] = [
@@ -123,6 +132,8 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
   const [instruction, setInstruction] = useState<string>('');
   const [strictVerbatim, setStrictVerbatim] = useState<boolean>(true);
   const [bearerAuth, setBearerAuth] = useState<boolean>(false);
+  const [designGuideTarget, setDesignGuideTarget] =
+    useState<DesignGuideTarget>('root');
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -295,6 +306,10 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
     ? buildRawManifestUrl(cleanBaseUrl, activeTemplate.meta.slug)
     : '';
 
+  const designGuideUrl = activeTemplate
+    ? buildDesignGuideUrl(cleanBaseUrl, activeTemplate.meta.slug)
+    : '';
+
   const fullPageHref = useMemo(
     () =>
       buildPreviewHref({
@@ -306,16 +321,37 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
     [activeTemplate, activeCustomization],
   );
 
-  const displayMarkdown = useMemo(() => {
+  const displayDesignGuide = useMemo(() => {
     if (!activeTemplate) return '';
     return isCustomized
+      ? generateDesignGuideMarkdown(activeTemplate.meta, activeCustomization)
+      : activeTemplate.designGuide;
+  }, [activeTemplate, isCustomized, activeCustomization]);
+
+  const effectiveDesignSchema = useMemo(() => {
+    if (!activeTemplate) return null;
+    return resolveEffectiveDesignSchema(
+      activeTemplate.meta,
+      activeCustomization,
+    );
+  }, [activeTemplate, activeCustomization]);
+
+  const activeScheme = useMemo(
+    () => matchThemeScheme(activeCustomization.tokens),
+    [activeCustomization.tokens],
+  );
+
+  const displayMarkdown = useMemo(() => {
+    if (!activeTemplate) return '';
+    return isCustomized || designGuideTarget !== 'root'
       ? generateTemplateMarkdown(
           activeTemplate.meta,
           activeTemplate.files,
           activeCustomization,
+          { designGuideTarget },
         )
       : activeTemplate.markdown;
-  }, [activeTemplate, isCustomized, activeCustomization]);
+  }, [activeTemplate, isCustomized, designGuideTarget, activeCustomization]);
 
   const oneLinePrompt = useMemo(() => {
     if (!activeTemplate) return '';
@@ -332,6 +368,7 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
       strictVerbatim,
       bearerAuth: bearerAuthAvailable && bearerAuth,
       customClause,
+      designGuideTarget,
     });
   }, [
     activeTemplate,
@@ -339,11 +376,27 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
     isCustomized,
     bearerAuth,
     bearerAuthAvailable,
+    designGuideTarget,
     instruction,
     rawManifestUrl,
     strictVerbatim,
     targetDir,
   ]);
+
+  const handleDownloadDesignGuide = () => {
+    if (!displayDesignGuide || typeof document === 'undefined') return;
+    const blob = new Blob([displayDesignGuide], {
+      type: 'text/markdown;charset=utf-8',
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = 'DESIGN.md';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  };
 
   const triggerCopy = async (key: string, text: string) => {
     const ok = await copyToClipboard(text);
@@ -644,18 +697,18 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
                     </div>
                   </div>
 
-                  {/* 3 Workspace Tabs */}
+                  {/* 4 Workspace Tabs */}
                   <div
                     role="tablist"
                     aria-label="Workspace views"
-                    className="inline-flex w-full shrink-0 rounded-xl border border-zinc-800 bg-zinc-950 p-1 sm:w-auto"
+                    className="inline-flex w-full shrink-0 flex-wrap rounded-xl border border-zinc-800 bg-zinc-950 p-1 sm:w-auto sm:flex-nowrap"
                   >
                     <button
                       type="button"
                       role="tab"
                       aria-selected={activeTab === 'preview'}
                       onClick={() => setActiveTab('preview')}
-                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition sm:flex-initial ${
+                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition sm:flex-initial ${
                         activeTab === 'preview'
                           ? 'bg-zinc-800 text-zinc-100 shadow-xs'
                           : 'text-zinc-400 hover:text-zinc-200'
@@ -667,9 +720,23 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
                     <button
                       type="button"
                       role="tab"
+                      aria-selected={activeTab === 'design'}
+                      onClick={() => setActiveTab('design')}
+                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition sm:flex-initial ${
+                        activeTab === 'design'
+                          ? 'bg-zinc-800 text-zinc-100 shadow-xs'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      Design Guide
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
                       aria-selected={activeTab === 'raw'}
                       onClick={() => setActiveTab('raw')}
-                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition sm:flex-initial ${
+                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition sm:flex-initial ${
                         activeTab === 'raw'
                           ? 'bg-zinc-800 text-zinc-100 shadow-xs'
                           : 'text-zinc-400 hover:text-zinc-200'
@@ -683,7 +750,7 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
                       role="tab"
                       aria-selected={activeTab === 'prompt'}
                       onClick={() => setActiveTab('prompt')}
-                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition sm:flex-initial ${
+                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition sm:flex-initial ${
                         activeTab === 'prompt'
                           ? 'bg-zinc-800 text-zinc-100 shadow-xs'
                           : 'text-zinc-400 hover:text-zinc-200'
@@ -881,7 +948,284 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
                 </div>
               )}
 
-              {/* Tab 2: Agent Raw */}
+              {/* Tab 2: Design Guide */}
+              {activeTab === 'design' && effectiveDesignSchema && (
+                <div className="flex-1 space-y-4 overflow-y-auto p-4 lg:p-6">
+                  {isCustomized && (
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-sky-500/30 bg-sky-950/25 px-4 py-2.5">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 font-medium text-sky-300">
+                          <SlidersHorizontal className="h-3 w-3" />
+                          <span>Customized ({activeCustomizationCount})</span>
+                        </span>
+                        {activeScheme && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 font-mono text-[11px] text-zinc-200">
+                            Scheme: {activeScheme.name}
+                          </span>
+                        )}
+                        <span className="text-zinc-300">
+                          Reflecting {activeCustomizationCount}{' '}
+                          {activeCustomizationCount === 1
+                            ? 'override'
+                            : 'overrides'}{' '}
+                          in DESIGN.md
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('preview');
+                            setCustomizeOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800"
+                        >
+                          <SlidersHorizontal className="h-3 w-3" />
+                          <span>Customize</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetCustomization}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Design Schema Overview */}
+                  <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
+                              effectiveDesignSchema.mode === 'dark'
+                                ? 'border-zinc-700 bg-zinc-900 text-zinc-200'
+                                : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                            }`}
+                          >
+                            {effectiveDesignSchema.mode === 'dark'
+                              ? 'Dark Mode'
+                              : 'Light Mode'}
+                          </span>
+                          <span className="rounded-md border border-zinc-800 bg-[#0A0A0B] px-2 py-0.5 font-mono text-[11px] text-zinc-400">
+                            {effectiveDesignSchema.id} &middot; v
+                            {effectiveDesignSchema.version}
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-zinc-300 sm:text-sm">
+                          {effectiveDesignSchema.summary}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Swatch Strip */}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                      {[
+                        {
+                          label: 'Canvas',
+                          value: effectiveDesignSchema.palette.canvas,
+                        },
+                        {
+                          label: 'Surface',
+                          value: effectiveDesignSchema.palette.surface,
+                        },
+                        {
+                          label: 'Elevated',
+                          value: effectiveDesignSchema.palette.surfaceElevated,
+                        },
+                        {
+                          label: 'Text',
+                          value: effectiveDesignSchema.palette.text,
+                        },
+                        {
+                          label: 'Border',
+                          value: effectiveDesignSchema.palette.border,
+                        },
+                        {
+                          label: 'Accent',
+                          value: effectiveDesignSchema.palette.accent,
+                        },
+                      ].map((swatch) => (
+                        <div
+                          key={swatch.label}
+                          className="flex items-center gap-2.5 rounded-lg border border-zinc-800/80 bg-[#0A0A0B] px-2.5 py-2"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="h-5 w-5 shrink-0 rounded-md border border-zinc-700/70"
+                            style={{ backgroundColor: swatch.value }}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-medium text-zinc-400">
+                              {swatch.label}
+                            </div>
+                            <div className="truncate font-mono text-[11px] text-zinc-200">
+                              {swatch.value}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 3 Metadata Cards */}
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-zinc-800/80 bg-[#0A0A0B] p-3">
+                        <div className="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                          Typography
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs">
+                          <div className="text-zinc-300">
+                            <span className="text-zinc-500">Display: </span>
+                            <span>{effectiveDesignSchema.typography.display}</span>
+                          </div>
+                          <div className="text-zinc-300">
+                            <span className="text-zinc-500">Mono: </span>
+                            <span className="font-mono text-[11px]">
+                              {effectiveDesignSchema.typography.mono}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-zinc-800/80 bg-[#0A0A0B] p-3">
+                        <div className="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                          Geometry
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs">
+                          <div className="text-zinc-300">
+                            <span className="text-zinc-500">Radius: </span>
+                            <span>{effectiveDesignSchema.geometry.radius}</span>
+                          </div>
+                          <div className="text-zinc-300">
+                            <span className="text-zinc-500">Border: </span>
+                            <span>
+                              {effectiveDesignSchema.geometry.borderStyle}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-zinc-800/80 bg-[#0A0A0B] p-3">
+                        <div className="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                          Elevation &amp; Motion
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs">
+                          <div className="text-zinc-300">
+                            <span className="text-zinc-500">Elevation: </span>
+                            <span>{effectiveDesignSchema.elevation}</span>
+                          </div>
+                          <div className="text-zinc-300">
+                            <span className="text-zinc-500">Motion: </span>
+                            <span>{effectiveDesignSchema.motion}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Raw Design Guide Endpoint Bar */}
+                  <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase">
+                        Design Guide Endpoint
+                      </div>
+                      <div className="mt-1 truncate font-mono text-xs text-zinc-200 sm:text-sm">
+                        {designGuideUrl}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {!isCustomized && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('preview');
+                            setCustomizeOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+                        >
+                          <SlidersHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+                          <span>Customize</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          triggerCopy(
+                            'design-curl',
+                            `curl -s ${designGuideUrl} -o DESIGN.md`,
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800"
+                      >
+                        {copiedKey === 'design-curl' ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                            <span>Copied curl</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5 text-zinc-400" />
+                            <span>Copy curl -o DESIGN.md</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDownloadDesignGuide}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800"
+                      >
+                        <Download className="h-3.5 w-3.5 text-zinc-400" />
+                        <span>Download DESIGN.md</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          triggerCopy('design-md', displayDesignGuide)
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-950 transition hover:bg-white"
+                      >
+                        {copiedKey === 'design-md' ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Copied Markdown</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>Copy Markdown</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scrollable DESIGN.md Content */}
+                  <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+                    <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
+                      <span className="font-mono text-xs text-zinc-400">
+                        /r/{activeTemplate.meta.slug}.design.md
+                      </span>
+                      <span className="font-mono text-[11px] text-zinc-500">
+                        {effectiveDesignSchema.components.length} pattern(s)
+                      </span>
+                    </div>
+                    <pre className="max-h-[60vh] overflow-auto p-4 font-mono text-xs leading-relaxed text-zinc-300">
+                      <code>{displayDesignGuide}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Agent Raw */}
               {activeTab === 'raw' && (
                 <div className="flex-1 space-y-4 overflow-y-auto p-4 lg:p-6">
                   {isCustomized && (
@@ -1005,7 +1349,7 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
                 </div>
               )}
 
-              {/* Tab 3: 1-Line Prompt */}
+              {/* Tab 4: 1-Line Prompt */}
               {activeTab === 'prompt' && (
                 <div className="flex-1 overflow-y-auto p-4 lg:p-6">
                   <div className="mx-auto max-w-4xl space-y-5">
@@ -1106,6 +1450,55 @@ export default function HubApp({ bearerAuthAvailable = false }: HubAppProps) {
                             onChange={(e) => setInstruction(e.target.value)}
                             className="w-full rounded-lg border border-zinc-800 bg-[#0A0A0B] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none"
                           />
+                        </div>
+
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
+                              <BookOpen className="h-3.5 w-3.5 text-zinc-500" />
+                              Design Guide (DESIGN.md)
+                            </span>
+                            <span className="font-mono text-[11px] text-zinc-500">
+                              {designGuideTarget === 'root'
+                                ? 'DESIGN.md'
+                                : designGuideTarget === 'targetDir'
+                                  ? targetDir.trim()
+                                    ? `${targetDir.trim().replace(/\/+$/, '')}/DESIGN.md`
+                                    : 'DESIGN.md'
+                                  : 'Skipped'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-zinc-800/80 bg-[#0A0A0B] p-1">
+                            {(
+                              [
+                                { value: 'root', label: 'Project Root' },
+                                { value: 'targetDir', label: 'Target Dir' },
+                                { value: 'none', label: 'Skip' },
+                              ] as const
+                            ).map((option) => {
+                              const active = designGuideTarget === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  aria-pressed={active}
+                                  onClick={() =>
+                                    setDesignGuideTarget(option.value)
+                                  }
+                                  className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                                    active
+                                      ? 'bg-zinc-800 text-zinc-100 shadow-xs'
+                                      : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-1.5 text-[11px] text-zinc-500">
+                            Writes <code className="font-mono text-zinc-400">DESIGN.md</code> as the persistent design reference after install so future pages, modals, and forms match this template.
+                          </p>
                         </div>
 
                         <div

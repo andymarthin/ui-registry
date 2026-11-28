@@ -30,6 +30,67 @@ export type DensityChoice =
   | 'comfortable'
   | 'spacious';
 
+export type DesignSurfaceMode = 'dark' | 'light';
+
+export type DesignGuideTarget = 'root' | 'targetDir' | 'none';
+
+export interface TemplateDesignPalette {
+  canvas: string;
+  surface: string;
+  surfaceElevated: string;
+  text: string;
+  textMuted: string;
+  border: string;
+  accent: string;
+  accentForeground: string;
+  semantic?: {
+    success?: string;
+    warning?: string;
+    danger?: string;
+    info?: string;
+  };
+}
+
+export interface TemplateDesignTypography {
+  display: string;
+  body: string;
+  mono: string;
+  headingScale: string;
+  bodyScale: string;
+}
+
+export interface TemplateDesignGeometry {
+  radius: string;
+  borderStyle: string;
+  spacing: string;
+  containerMaxWidth: string;
+}
+
+export interface TemplateDesignSchema {
+  id: string;
+  version: string;
+  mode: DesignSurfaceMode;
+  summary: string;
+  palette: TemplateDesignPalette;
+  typography: TemplateDesignTypography;
+  geometry: TemplateDesignGeometry;
+  elevation: string;
+  motion: string;
+  components: string[];
+  doRules: string[];
+  dontRules: string[];
+}
+
+export interface ThemeSchemePreset {
+  id: string;
+  name: string;
+  description: string;
+  swatchBg: string;
+  swatchAccent: string;
+  swatchBorder: string;
+  tokens: TemplateThemeTokens;
+}
+
 export interface TemplateCustomField {
   key: string;
   label: string;
@@ -65,6 +126,7 @@ export interface TemplateMeta {
   defaultInstruction: string;
   accentFamily?: TemplateAccentFamily;
   customFields?: TemplateCustomField[];
+  design: TemplateDesignSchema;
 }
 
 export interface TemplateFile {
@@ -83,4 +145,5 @@ export interface TemplateEntry {
   Preview: ComponentType<TemplatePreviewProps>;
   files: TemplateFile[];
   markdown: string;
+  designGuide: string;
 }

@@ -2,14 +2,23 @@ import {
   getEffectiveCopyOverrides,
   hasActiveCustomization,
 } from './customize';
+import {
+  generateDesignGuideMarkdown,
+  resolveDesignGuidePath,
+} from './design-guide';
 import type {
   DensityChoice,
+  DesignGuideTarget,
   FontFamilyChoice,
   RadiusScale,
   TemplateCustomization,
   TemplateFile,
   TemplateMeta,
 } from './types';
+
+export interface GenerateTemplateMarkdownOptions {
+  designGuideTarget?: DesignGuideTarget;
+}
 
 const RADIUS_GUIDANCE: Record<Exclude<RadiusScale, 'default'>, string> = {
   sharp: '0px corners across cards, panels, and buttons (preserve circular dots/avatars)',
@@ -34,10 +43,13 @@ export function generateTemplateMarkdown(
   meta: TemplateMeta,
   files: TemplateFile[],
   customization?: TemplateCustomization,
+  options?: GenerateTemplateMarkdownOptions,
 ): string {
   const dependencies = meta.dependencies.join(', ') || 'None';
   const isCustomized =
     Boolean(customization) && hasActiveCustomization(customization, meta);
+  const designGuideTarget = options?.designGuideTarget ?? 'root';
+  const designGuidePath = resolveDesignGuidePath(meta.targetDir, designGuideTarget);
 
   const rule2 = isCustomized
     ? '2. Preserve layout geometry while applying the Visual Token Overrides and Copy / Props Overrides listed in `## Active Customizations` below.'
@@ -58,6 +70,11 @@ export function generateTemplateMarkdown(
     '1. Write every file below verbatim into the requested target directory (or the default Target Directory above if none is specified), keeping relative paths and filenames intact.',
     rule2,
     '3. Only wire real data or copy via component props.',
+    ...(designGuidePath
+      ? [
+          `4. Write \`${designGuidePath}\` verbatim and treat it as this project's persistent design system guide—consult it whenever building new pages, components, modals, or forms so all subsequent UI matches this template's visual language.`,
+        ]
+      : []),
   ];
 
   const customizationLines: string[] = [];
@@ -134,5 +151,22 @@ export function generateTemplateMarkdown(
     ];
   });
 
-  return [...headerLines, ...customizationLines, ...fileSections, ''].join('\n');
+  const designGuideSections = designGuidePath
+    ? [
+        '',
+        `## File: \`${designGuidePath}\``,
+        '',
+        '````markdown',
+        generateDesignGuideMarkdown(meta, customization).trimEnd(),
+        '````',
+      ]
+    : [];
+
+  return [
+    ...headerLines,
+    ...customizationLines,
+    ...fileSections,
+    ...designGuideSections,
+    '',
+  ].join('\n');
 }

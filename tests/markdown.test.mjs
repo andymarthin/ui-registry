@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createDefaultCustomization } from '../src/templates/customize.ts';
+import { generateDesignGuideMarkdown } from '../src/templates/design-guide.ts';
 import { generateTemplateMarkdown } from '../src/templates/markdown.ts';
 
 function makeMeta(overrides = {}) {
@@ -60,6 +61,7 @@ describe('generateTemplateMarkdown (uncustomized)', () => {
       '1. Write every file below verbatim into the requested target directory (or the default Target Directory above if none is specified), keeping relative paths and filenames intact.',
       '2. Do NOT alter colors, typography, border radius, or layout geometry.',
       '3. Only wire real data or copy via component props.',
+      '4. Write `DESIGN.md` verbatim and treat it as this project\'s persistent design system guide—consult it whenever building new pages, components, modals, or forms so all subsequent UI matches this template\'s visual language.',
       '',
       '## File: `src/components/ops/OpsConsole.tsx`',
       '',
@@ -76,6 +78,12 @@ describe('generateTemplateMarkdown (uncustomized)', () => {
       '  id: string;',
       '}',
       '```',
+      '',
+      '## File: `DESIGN.md`',
+      '',
+      '````markdown',
+      generateDesignGuideMarkdown(meta).trimEnd(),
+      '````',
       '',
     ].join('\n');
 
@@ -297,5 +305,65 @@ describe('generateTemplateMarkdown (default or invalid customization)', () => {
     });
     assert.equal(withInvalid, baseline);
     assert.equal(withInvalid.includes('## Active Customizations'), false);
+  });
+});
+
+describe('generateTemplateMarkdown (DESIGN.md placement & propagation)', () => {
+  it('supports designGuideTarget="root", "targetDir", and "none"', () => {
+    const meta = makeMeta();
+
+    const rootMd = generateTemplateMarkdown(meta, SAMPLE_FILES, undefined, {
+      designGuideTarget: 'root',
+    });
+    assert.ok(rootMd.includes('4. Write `DESIGN.md` verbatim'));
+    assert.ok(rootMd.includes('## File: `DESIGN.md`\n\n````markdown\n# DESIGN.md — Ops Console'));
+
+    const targetDirMd = generateTemplateMarkdown(meta, SAMPLE_FILES, undefined, {
+      designGuideTarget: 'targetDir',
+    });
+    assert.ok(targetDirMd.includes('4. Write `src/components/ops/DESIGN.md` verbatim'));
+    assert.ok(
+      targetDirMd.includes(
+        '## File: `src/components/ops/DESIGN.md`\n\n````markdown\n# DESIGN.md — Ops Console',
+      ),
+    );
+    assert.equal(targetDirMd.includes('## File: `DESIGN.md`'), false);
+
+    const noneMd = generateTemplateMarkdown(meta, SAMPLE_FILES, undefined, {
+      designGuideTarget: 'none',
+    });
+    assert.equal(noneMd.includes('4. Write '), false);
+    assert.equal(noneMd.includes('DESIGN.md'), false);
+  });
+
+  it('propagates customized theme tokens and copy overrides into the embedded DESIGN.md block', () => {
+    const meta = makeMeta();
+    const customization = {
+      tokens: {
+        accentColor: '#38bdf8',
+        radiusScale: 'rounded',
+        fontFamily: 'sans',
+        density: 'comfortable',
+      },
+      copy: {
+        clusterName: 'prod-eu-central',
+      },
+    };
+
+    const md = generateTemplateMarkdown(meta, SAMPLE_FILES, customization);
+    const marker = '## File: `DESIGN.md`\n\n````markdown\n';
+    const idx = md.indexOf(marker);
+    assert.ok(idx !== -1, 'Expected embedded DESIGN.md section');
+    const embeddedGuide = md.slice(idx + marker.length);
+
+    assert.ok(embeddedGuide.includes('- **Applied Theme Scheme:** Midnight Glass (`midnight-glass`)'));
+    assert.ok(
+      embeddedGuide.includes(
+        '- **Active Overrides:** accent `#38BDF8`, radius `rounded`, font `sans`, density `comfortable`, copy overrides (`clusterName`)',
+      ),
+    );
+    assert.ok(embeddedGuide.includes('| `accent` | `#38BDF8` |'));
+    assert.ok(embeddedGuide.includes('generous rounded radii'));
+    assert.ok(embeddedGuide.includes('Modern geometric sans-serif (font-sans)'));
   });
 });
