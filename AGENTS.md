@@ -36,5 +36,7 @@ Deliverable `.ts` / `.tsx` files (recursively, including subfolders) inside `src
 
 ## Git Commit Convention
 
-- Make **1 small atomic commit per feature** (e.g. foundation, each template pair, hub shell, docs/polish).
-- Never commit `node_modules/`, `dist/`, `.astro/`, or secrets.
+- Never commit directly to `main`; always create a new feature branch (e.g. `feat/<slug>`, `fix/<slug>`).
+- Make **small atomic commits grouped by logical layer** (e.g. core/schema, templates, hub UI, tests, docs).
+- After verification (`pnpm check && pnpm test && pnpm build`) passes, automatically create the branch, commit, push to `origin`, and open a Pull Request targeting `main` without asking the user for commit permission (the PR is the review/merge gate).
+- Never merge to `main`, force-push, or commit `node_modules/`, `dist/`, `.astro/`, or secrets.
