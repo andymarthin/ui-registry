@@ -89,10 +89,10 @@ src/templates/<slug>/
 
 No manual registration is needed. At dev and build time, `src/templates/registry.ts` uses Vite `import.meta.glob` to discover every folder containing both `meta.ts` and `Preview.tsx`:
 
-- `./*/meta.ts` loads `meta: TemplateMeta`.
+- `./*/meta.ts` loads `meta: TemplateMeta` (including `design: TemplateDesignSchema`).
 - `./*/Preview.tsx` loads the default preview component rendered in `/` and `/preview/<slug>`.
-- `./*/*.tsx` (`query: '?raw'`) collects direct-child `.tsx` files alphabetically as verbatim deliverables and **automatically excludes `Preview.tsx`**.
-- `src/templates/markdown.ts` generates the Markdown manifest served at `/r/<slug>.md` (by `src/pages/r/[slug].md.ts`), and `src/pages/preview/[slug].astro` prerenders the standalone preview route `/preview/<slug>`.
+- `./*/**/*.ts` and `./*/**/*.tsx` (`query: '?raw'`) collect deliverable `.ts`/`.tsx` files alphabetically as verbatim deliverables and **automatically exclude top-level `Preview.tsx` and `meta.ts`**.
+- `src/templates/design-guide.ts` generates `DESIGN.md` from `meta.design`, `src/templates/markdown.ts` generates the `/r/<slug>.md` manifest (with embedded `DESIGN.md` and `THEME_SCHEMES` / token customization support), `src/pages/r/[slug].md.ts` prerenders `/r/<slug>.md`, `src/pages/r/[slug].design.md.ts` prerenders `/r/<slug>.design.md`, and `src/pages/preview/[slug].astro` prerenders `/preview/<slug>`.
 
 ### `meta.ts` checklist (`src/templates/types.ts`)
 
@@ -107,8 +107,9 @@ Fill every field of `TemplateMeta` accurately so both Hub users and downstream c
 - [ ] `dependencies`: Exact npm packages required by deliverable `.tsx` files (typically `['tailwindcss', 'lucide-react']`).
 - [ ] `targetDir`: Default destination directory in consumer repos (e.g., `'src/components/<slug>'`), which sets every `## File: \`<targetDir>/<File>.tsx\`` header in `/r/<slug>.md`.
 - [ ] `defaultInstruction`: Specific wiring instruction pre-filled in the **1-Line Prompt** tab telling downstream agents which props to connect to real APIs/copy while keeping colors, typography, radii, and layout geometry intact.
+- [ ] `design` (`TemplateDesignSchema`): Complete extracted design system (`id`, `version`, `mode`, `summary`, `palette` with `canvas === swatchBg` and `accent === swatchAccent`, `typography`, `geometry`, `elevation`, `motion`, `components`, `doRules`, `dontRules`) powering `/r/<slug>.design.md` and the post-install `DESIGN.md` reference.
 
-> **Design-preservation rules:** `src/templates/markdown.ts` automatically includes the `## Rules for Agent` section in every `/r/<slug>.md` manifest (write every file verbatim into the target directory, do not alter colors/typography/border radius/layout geometry, and wire real data or copy via props only).
+> **Design-preservation & `DESIGN.md` rules:** `src/templates/markdown.ts` automatically includes `## Rules for Agent` in every `/r/<slug>.md` manifest (write files verbatim, do not alter colors/typography/border radius/layout geometry, wire data/copy via props only, and write `DESIGN.md` as the persistent design system guide for subsequent pages, modals, and forms). Customize presets (`THEME_SCHEMES`) and token overrides automatically propagate into `DESIGN.md` and `/r/<slug>.design.md`.
 
 ### `Preview.tsx` checklist
 
@@ -137,15 +138,16 @@ Run the full type-check and static build before committing:
 
 ```bash
 ASTRO_TELEMETRY_DISABLED=1 pnpm check
+ASTRO_TELEMETRY_DISABLED=1 pnpm test
 ASTRO_TELEMETRY_DISABLED=1 pnpm build
 ```
 
 Confirm zero TypeScript/Astro errors and then run these smoke checks:
 
-1. **Check the generated manifest for hub-internal leaks:**
-   Confirm `dist/r/<slug>.md` exists, contains every deliverable `.tsx` file under `## File: \`<targetDir>/<File>.tsx\``, and has **zero** references to `Preview.tsx`, `InspectBox`, `TemplateFullscreenPreview`, `../types`, or `../registry`:
+1. **Check the generated manifest and design guide for hub-internal leaks:**
+   Confirm `dist/r/<slug>.md` and `dist/r/<slug>.design.md` exist, `dist/r/<slug>.md` contains every deliverable `.ts`/`.tsx` file under `## File: \`<targetDir>/<File>.tsx\`` plus `## File: \`DESIGN.md\``, and has **zero** references to `Preview.tsx`, `InspectBox`, `TemplateFullscreenPreview`, `../types`, or `../registry`:
    ```bash
-   ls -la dist/r/<slug>.md
+   ls -la dist/r/<slug>.md dist/r/<slug>.design.md
    grep -E "Preview\.tsx|InspectBox|TemplateFullscreenPreview|\.\./types|\.\./registry" dist/r/<slug>.md || echo "OK: no leaks"
    ```
 2. **Smoke-test the built site locally:**
@@ -155,8 +157,8 @@ Confirm zero TypeScript/Astro errors and then run these smoke checks:
    Verify:
    - Hub `/` renders your template cleanly across **Desktop**, **Tablet (`768px`)**, and **Mobile (`390px`)** viewports.
    - **Inspect Templates** toggle highlights all `data-inspect-label` sections cleanly without shifting layout.
-   - Standalone full-page route `http://localhost:4321/preview/<slug>` renders with the right background color and responsive behavior.
-   - **Agent Raw** tab, **1-Line Prompt** tab, and `curl -s http://localhost:4321/r/<slug>.md | head -n 40` return the exact expected manifest.
+   - Standalone full-page route `http://localhost:4321/preview/<slug>` renders with the right background color and responsive behavior (and responds to `?scheme=<id>` / token overrides).
+   - **Design Guide** tab, **Agent Raw** tab, **1-Line Prompt** tab (with **Design Guide (`DESIGN.md`)** placement options), `curl -s http://localhost:4321/r/<slug>.md | head -n 40`, and `curl -s http://localhost:4321/r/<slug>.design.md | head -n 40` return the exact expected output.
 3. **Commit atomically:**
    Follow `AGENTS.md`—make **1 small atomic commit** containing `src/templates/<slug>/*`, and never commit `node_modules/`, `dist/`, or `.astro/`.
 
@@ -176,7 +178,7 @@ Synthetic domain: <describe fictional brand/domain to replace proprietary copy a
 Requirements:
 1. Follow `AGENTS.md`, `docs/creating-templates.md`, and `docs/adopting-from-live.md` strictly.
 2. Preserve the reference's layout geometry, color palette, surface elevation, typography scale, border radii, and interactive patterns (tabs, filters, drawers, accordions, modals), but replace ALL proprietary branding, logos, copyrighted copy, photography, and real customer data with clean synthetic domain content.
-3. Create `src/templates/<slug>/meta.ts` (`export const meta: TemplateMeta` matching `src/templates/types.ts`), one or more standalone deliverable `.tsx` components, and `src/templates/<slug>/Preview.tsx` (default export accepting `{ inspect = false }: TemplatePreviewProps` and wrapping its root with `data-inspect-mode={inspect ? 'true' : 'false'}`).
+3. Create `src/templates/<slug>/meta.ts` (`export const meta: TemplateMeta` matching `src/templates/types.ts`, including a complete `design: TemplateDesignSchema` with `palette.canvas === swatchBg` and `palette.accent === swatchAccent`), one or more standalone deliverable `.tsx` components, and `src/templates/<slug>/Preview.tsx` (default export accepting `{ inspect = false }: TemplatePreviewProps` and wrapping its root with `data-inspect-mode={inspect ? 'true' : 'false'}`).
 4. Deliverable `.tsx` rules:
    - Import ONLY `react`, `lucide-react`, or sibling `.tsx` files in `src/templates/<slug>/`. NEVER import `InspectBox`, `../types`, `../registry`, or any hub-internal module.
    - Use standalone Tailwind CSS v4 utility classes only (arbitrary values like `bg-[#...]` are encouraged for exact palette fidelity); require zero custom CSS edits in host apps.
@@ -185,6 +187,7 @@ Requirements:
 5. Harden for Desktop (`1440px`), Tablet (`768px`), and Mobile (`390px`): use `min-w-0` on flex/grid children, `overflow-x-auto` around wide tables, responsive display headings with `break-words`, `flex-wrap` on action/pill rows, and a working mobile navigation drawer where applicable so there is zero horizontal overflow at `390px`.
 6. Verify with:
    - `ASTRO_TELEMETRY_DISABLED=1 pnpm check`
+   - `ASTRO_TELEMETRY_DISABLED=1 pnpm test`
    - `ASTRO_TELEMETRY_DISABLED=1 pnpm build`
-   - Confirm `dist/r/<slug>.md` includes all deliverable `.tsx` files and contains zero occurrences of `Preview.tsx`, `InspectBox`, `TemplateFullscreenPreview`, or `../types`.
+   - Confirm `dist/r/<slug>.md` and `dist/r/<slug>.design.md` exist, `dist/r/<slug>.md` includes all deliverable `.tsx` files plus `## File: \`DESIGN.md\``, and contains zero occurrences of `Preview.tsx`, `InspectBox`, `TemplateFullscreenPreview`, or `../types`.
 ```
