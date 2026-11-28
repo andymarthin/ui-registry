@@ -34,9 +34,20 @@ Deliverable `.ts` / `.tsx` files (recursively, including subfolders) inside `src
 5. **Tailwind v4 utilities only:** Rely on Tailwind CSS v4 utility classes and inline props—do not require custom CSS edits in host apps.
 6. **Props-driven data:** Accept typed props for all domain data and copy so consuming agents can wire real APIs without altering colors, typography, border radius, or layout geometry.
 
+## Standard Artifact Templates
+
+Use these templates so every spec, verification scorecard, run log, and PR stays consistent across agents:
+
+- **Pull Requests:** [`.github/pull_request_template.md`](.github/pull_request_template.md) (Summary tree/diff, Before/After Evidence, Merge Danger Door/Blast Radius, Verification Checklist).
+- **Obsidian Team Artifacts (`ui-lead` / `ui-checker`):**
+  - Spec: `Projects/ui-template-team/templates/spec.md`
+  - Run Log: `Projects/ui-template-team/templates/run-log.md`
+  - Checker Scorecard: `Projects/ui-template-team/templates/checker-scorecard.md`
+- **Template Authoring Guides:** [`docs/creating-templates.md`](docs/creating-templates.md) and [`docs/adopting-from-live.md`](docs/adopting-from-live.md).
+
 ## Git Commit Convention
 
 - Never commit directly to `main`; always create a new feature branch (e.g. `feat/<slug>`, `fix/<slug>`).
 - Make **small atomic commits grouped by logical layer** (e.g. core/schema, templates, hub UI, tests, docs).
-- After verification (`pnpm check && pnpm test && pnpm build`) passes, automatically create the branch, commit, push to `origin`, and open a Pull Request targeting `main` without asking the user for commit permission (the PR is the review/merge gate).
+- After verification (`pnpm check && pnpm test && pnpm build`) passes, automatically create the branch, commit, push to `origin`, and open a Pull Request targeting `main` (using [`.github/pull_request_template.md`](.github/pull_request_template.md)) without asking the user for commit permission (the PR is the review/merge gate).
 - Never merge to `main`, force-push, or commit `node_modules/`, `dist/`, `.astro/`, or secrets.
